@@ -1,13 +1,16 @@
-package com.localdoc.dto;
+package com.localdoc.dto.request;
 
+import lombok.AccessLevel;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.experimental.FieldDefaults;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class DocumentationRequest {
-    private String sourceCode;
-    private String templateCode;
+    String sourceCode;
+    String templateCode;
 }

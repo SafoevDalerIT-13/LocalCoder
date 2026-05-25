@@ -1,7 +1,8 @@
-package com.localdoc.ai;
+package com.localdoc.controller;
 
 import com.localdoc.dto.request.DocumentationRequest;
 import com.localdoc.dto.response.DocumentationResponse;
+import com.localdoc.service.DocumentationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -17,26 +18,11 @@ public class DocumentationController {
 
     @PostMapping("/generate")
     public ResponseEntity<DocumentationResponse> generate(@RequestBody DocumentationRequest request) {
-        try {
-            String doc = docService.generateDocumentation(
-                    request.getSourceCode(),
-                    request.getTemplateCode()
-            );
-            DocumentationResponse response = new DocumentationResponse(
-                    doc,
-                    request.getTemplateCode(),
-                    true,
-                    null
-            );
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            DocumentationResponse errorResponse = new DocumentationResponse(
-                    null,
-                    request.getTemplateCode(),
-                    false,
-                    e.getMessage()
-            );
-            return ResponseEntity.internalServerError().body(errorResponse);
-        }
+        String documentation = docService.generateDocumentation(
+                request.getSourceCode(),
+                request.getTemplateCode()
+        );
+        DocumentationResponse response = new DocumentationResponse(documentation, request.getTemplateCode());
+        return ResponseEntity.ok(response);
     }
 }
