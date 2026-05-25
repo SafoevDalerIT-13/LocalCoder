@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор документации</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="container">
+    <h1>Генерация документации</h1>
+    <p>Локальная LLM — Confluence Helper</p>
+
+    <form id="docForm">
+        <div class="form-group">
+            <label for="sourceCode">Исходный код (Java)</label>
+            <textarea id="sourceCode" rows="12" placeholder="Вставьте код, например:&#10;public class Hello {}" required></textarea>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="templateCode">Шаблон документа</label>
+                <select id="templateCode">
+                    <option value="200">200 (входные-выходные-алгоритм)</option>
+                    <option value="325">325</option>
+                </select>
+            </div>
+            <button type="submit" id="generateBtn">Сгенерировать</button>
+        </div>
+    </form>
+
+    <div id="status" class="status hidden"></div>
+
+    <div id="result" class="result hidden">
+        <h2>Результат</h2>
+        <pre id="docContent"></pre>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
