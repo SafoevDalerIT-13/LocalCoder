@@ -1,14 +1,16 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Генератор документации</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&family=Manrope:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="container">
-    <h1>Генерация документации</h1>
+    <h1>Генератор документации</h1>
     <p>Локальная LLM — Confluence Helper</p>
 
     <form id="docForm">
@@ -32,8 +34,14 @@
     <div id="status" class="status hidden"></div>
 
     <div id="result" class="result hidden">
-        <h2>Результат</h2>
+        <div class="result-header">
+            <h2>Результат генерации</h2>
+            <button id="copyBtn" class="copy-btn" title="Копировать текст">
+                <span class="copy-icon">Копировать</span>
+            </button>
+        </div>
         <pre id="docContent"></pre>
+        <div id="copyToast" class="copy-toast hidden">Скопировано!</div>
     </div>
 </div>
 
