@@ -33,5 +33,6 @@ cd local-documentation-helper
 
 # Запустить (Ollama + приложение)
 docker-compose up -d
+```
 
 Открыть http://localhost:8080
