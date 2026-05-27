@@ -24,8 +24,7 @@
 | qwen2.5-coder:3b | 1.8 ГБ | ~2.5 ГБ | быстро | среднее |
 | deepseek-coder-v2:16b | 9.2 ГБ | ~10 ГБ | медленно | высокое |
 
-Можно менять в docker-compose.yml, а именно в пуллере для ollama
-
+Модель меняется в `docker-compose.yml`, в секции `model-puller`.
 ## Быстрый старт
  
 ```bash
@@ -37,4 +36,7 @@ cd LocalCoder
 docker-compose up -d
 ```
 
-Открыть http://localhost:8080
+После запуска: 
+Веб-интерфейс: http://localhost:8080 
+Swagger UI: http://localhost:8080/swagger-ui/index.html 
+OpenAPI JSON: http://localhost:8080/v3/api-docs
