@@ -29,7 +29,7 @@
 ```bash
 # Клонировать репозиторий
 git clone <repo-url>
-cd local-documentation-helper
+cd LocalCoder
 
 # Запустить (Ollama + приложение)
 docker-compose up -d
