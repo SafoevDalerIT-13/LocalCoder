@@ -26,7 +26,22 @@
     <form id="docForm">
         <div class="form-group">
             <label for="sourceCode">Исходный код (Java)</label>
-            <textarea id="sourceCode" rows="12" placeholder="Вставьте код, например:&#10;public class Hello {}" required></textarea>
+            <div class="drop-zone" id="dropZone">
+                <textarea id="sourceCode" rows="12" placeholder="Вставьте код или перетащите .java файл сюда..." required></textarea>
+                <div class="drop-overlay" id="dropOverlay">
+                    <span class="material-symbols-outlined drop-icon">upload_file</span>
+                    <span class="drop-text">Перетащите файл сюда</span>
+                    <span class="drop-hint">.java, .kt, .py, .js и другие</span>
+                </div>
+            </div>
+            <div class="file-input-row">
+                <button type="button" id="fileBtn" class="file-btn">
+                    <span class="material-symbols-outlined">attach_file</span>
+                    <span>Выбрать файл</span>
+                </button>
+                <span id="fileName" class="file-name"></span>
+                <input type="file" id="fileInput" accept=".java,.kt,.groovy,.py,.js,.ts,.cs,.cpp,.c,.h,.rs,.go,.swift,.kt,.kts" hidden>
+            </div>
         </div>
 
         <div class="form-row">
@@ -56,6 +71,20 @@
         </div>
         <pre id="docContent"></pre>
         <div id="copyToast" class="copy-toast hidden">Скопировано!</div>
+    </div>
+
+    <div id="correction" class="correction hidden">
+        <div class="correction-header">
+            <span class="material-symbols-outlined">edit_note</span>
+            <span>Что-то не так? Напишите модели что исправить</span>
+        </div>
+        <textarea id="correctionInput" rows="3" placeholder="Например: убери раздел про исключения, добавь больше деталей по алгоритму..."></textarea>
+        <div class="correction-actions">
+            <button type="button" id="correctBtn" class="correction-btn">
+                <span class="material-symbols-outlined">auto_fix</span>
+                <span>Исправить</span>
+            </button>
+        </div>
     </div>
 </div>
 
