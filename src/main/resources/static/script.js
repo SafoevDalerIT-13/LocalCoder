@@ -41,6 +41,61 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileBtn = document.getElementById('fileBtn');
+    const fileName = document.getElementById('fileName');
+    const correctionDiv = document.getElementById('correction');
+    const correctionInput = document.getElementById('correctionInput');
+    const correctBtn = document.getElementById('correctBtn');
+    let currentSessionId = null;
+
+    function readFile(file) {
+        const ext = file.name.split('.').pop();
+        const langMap = { java: 'Java', kt: 'Kotlin', groovy: 'Groovy', py: 'Python', js: 'JavaScript', ts: 'TypeScript', cs: 'C#', cpp: 'C++', c: 'C', h: 'C/C++ Header', rs: 'Rust', go: 'Go', swift: 'Swift' };
+        const lang = langMap[ext] || file.name;
+        fileName.textContent = `${file.name} (${lang})`;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            sourceCodeEl.value = e.target.result;
+            if (sourceCodeEl.value.trim()) {
+                form.dispatchEvent(new Event('submit'));
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    ['dragenter', 'dragover'].forEach(evt => {
+        dropZone.addEventListener(evt, e => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(evt => {
+        dropZone.addEventListener(evt, e => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+        });
+    });
+
+    dropZone.addEventListener('drop', e => {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            readFile(files[0]);
+        }
+    });
+
+    fileBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            readFile(fileInput.files[0]);
+        }
+    });
+
+
     async function loadTemplates() {
         try {
             const response = await fetch('/api/docs/templates');
@@ -77,11 +132,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function hideResult() {
         resultDiv.classList.add('hidden');
+        correctionDiv.classList.add('hidden');
     }
 
-    function showResult(text) {
+    function showResult(text, sessionId) {
         docContent.textContent = text;
         resultDiv.classList.remove('hidden');
+        currentSessionId = sessionId;
+        correctionDiv.classList.remove('hidden');
+        correctionInput.value = '';
+        correctBtn.disabled = false;
+        correctionInput.disabled = false;
     }
 
 
@@ -110,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 const data = await response.json();
                 hideStatus();
-                showResult(data.documentation || 'Пустой ответ от модели');
+                showResult(data.documentation || 'Пустой ответ от модели', data.sessionId);
             } else {
                 let errorMsg = `Ошибка ${response.status}`;
                 try {
@@ -130,6 +191,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+
+    correctBtn.addEventListener('click', async function () {
+        const message = correctionInput.value.trim();
+        if (!message || !currentSessionId) return;
+
+        correctBtn.disabled = true;
+        correctionInput.disabled = true;
+        showStatus('Исправляю документацию...', 'info');
+
+        try {
+            const response = await fetch('/api/docs/correct', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId: currentSessionId, message })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                hideStatus();
+                showResult(data.documentation || 'Пустой ответ от модели', data.sessionId);
+            } else {
+                let errorMsg = `Ошибка ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMsg = errorData.message || errorMsg;
+                } catch (parseErr) { /* ignore */ }
+                showStatus(errorMsg, 'error');
+                correctBtn.disabled = false;
+                correctionInput.disabled = false;
+            }
+        } catch (err) {
+            showStatus(`Сетевая ошибка: ${err.message}`, 'error');
+            correctBtn.disabled = false;
+            correctionInput.disabled = false;
+        }
+    });
 
     copyBtn.addEventListener('click', async () => {
         const text = docContent.textContent.trim();

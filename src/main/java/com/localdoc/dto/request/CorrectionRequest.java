@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class DocumentationRequest {
-    private String sourceCode;
-    private String templateCode;
+public class CorrectionRequest {
+    private String sessionId;
+    private String message;
 }
