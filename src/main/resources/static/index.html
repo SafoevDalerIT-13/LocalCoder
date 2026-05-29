@@ -11,81 +11,107 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <div class="title-section">
-            <h1 class="glow-title">Local Documentation Helper</h1>
-            <p class="subtitle">Локальная LLM — Confluence Helper</p>
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">
+                <span class="material-symbols-outlined">chat</span>
+                <span>Чаты</span>
+            </div>
+            <button id="sidebarToggle" class="sidebar-btn sidebar-toggle" title="Скрыть панель">
+                <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            <button id="newChatBtn" class="sidebar-btn" title="Новый чат">
+                <span class="material-symbols-outlined">add</span>
+            </button>
         </div>
-        <button id="theme-toggle" class="theme-toggle" aria-label="Переключить тему">
-            <span class="material-symbols-outlined dark-icon">dark_mode</span>
-            <span class="material-symbols-outlined light-icon" style="display: none;">light_mode</span>
-        </button>
-    </div>
+        <div id="chatList" class="chat-list"></div>
+    </aside>
+    <button id="sidebarReveal" class="sidebar-reveal hidden" title="Показать панель">
+        <span class="material-symbols-outlined">chevron_right</span>
+    </button>
 
-    <form id="docForm">
-        <div class="form-group">
-            <label for="sourceCode">Исходный код (Java)</label>
-            <div class="drop-zone" id="dropZone">
-                <textarea id="sourceCode" rows="12" placeholder="Вставьте код или перетащите .java файл сюда..." required></textarea>
-                <div class="drop-overlay" id="dropOverlay">
-                    <span class="material-symbols-outlined drop-icon">upload_file</span>
-                    <span class="drop-text">Перетащите файл сюда</span>
-                    <span class="drop-hint">.java, .kt, .py, .js и другие</span>
+    <main class="main-content">
+        <div class="header">
+            <div class="title-section">
+                <h1 class="glow-title">Local Documentation Helper</h1>
+                <p class="subtitle">Локальная LLM — Confluence Helper</p>
+            </div>
+            <button id="theme-toggle" class="theme-toggle" aria-label="Переключить тему">
+                <span class="material-symbols-outlined dark-icon">dark_mode</span>
+                <span class="material-symbols-outlined light-icon" style="display: none;">light_mode</span>
+            </button>
+        </div>
+
+        <form id="docForm">
+            <div class="form-group">
+                <label for="sourceCode">Исходный код (Java)</label>
+                <div class="drop-zone" id="dropZone">
+                    <textarea id="sourceCode" rows="12" placeholder="Вставьте код или перетащите .java файл сюда..." required></textarea>
+                    <div class="drop-overlay" id="dropOverlay">
+                        <span class="material-symbols-outlined drop-icon">upload_file</span>
+                        <span class="drop-text">Перетащите файл сюда</span>
+                        <span class="drop-hint">.java, .kt, .py, .js и другие</span>
+                    </div>
+                </div>
+                <div class="file-input-row">
+                    <button type="button" id="fileBtn" class="file-btn">
+                        <span class="material-symbols-outlined">attach_file</span>
+                        <span>Выбрать файл</span>
+                    </button>
+                    <span id="fileName" class="file-name"></span>
+                    <input type="file" id="fileInput" accept=".java,.kt,.groovy,.py,.js,.ts,.cs,.cpp,.c,.h,.rs,.go,.swift,.kt,.kts" hidden>
                 </div>
             </div>
-            <div class="file-input-row">
-                <button type="button" id="fileBtn" class="file-btn">
-                    <span class="material-symbols-outlined">attach_file</span>
-                    <span>Выбрать файл</span>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="templateCode">Шаблон документа</label>
+                    <select id="templateCode">
+                        <option value="200">200 (входные-выходные-алгоритм)</option>
+                        <option value="325">325</option>
+                    </select>
+                </div>
+                <button type="submit" id="generateBtn">
+                    <span class="material-symbols-outlined">auto_awesome</span>
+                    <span>Сгенерировать</span>
                 </button>
-                <span id="fileName" class="file-name"></span>
-                <input type="file" id="fileInput" accept=".java,.kt,.groovy,.py,.js,.ts,.cs,.cpp,.c,.h,.rs,.go,.swift,.kt,.kts" hidden>
+            </div>
+        </form>
+
+        <div id="status" class="status hidden"></div>
+
+        <div id="versionBar" class="version-bar hidden">
+            <span class="version-bar-label">Версии:</span>
+            <div id="versionList" class="version-list"></div>
+        </div>
+
+        <div id="result" class="result hidden">
+            <div class="result-header">
+                <h2>Результат генерации</h2>
+                <button id="copyBtn" class="copy-btn" title="Копировать текст">
+                    <span class="material-symbols-outlined">content_copy</span>
+                    <span>Копировать</span>
+                </button>
+            </div>
+            <pre id="docContent"></pre>
+            <div id="copyToast" class="copy-toast hidden">Скопировано!</div>
+        </div>
+
+        <div id="correction" class="correction hidden">
+            <div class="correction-header">
+                <span class="material-symbols-outlined">edit_note</span>
+                <span>Что-то не так? Напишите модели что исправить</span>
+            </div>
+            <textarea id="correctionInput" rows="3" placeholder="Например: убери раздел про исключения, добавь больше деталей по алгоритму..."></textarea>
+            <div class="correction-actions">
+                <button type="button" id="correctBtn" class="correction-btn">
+                    <span class="material-symbols-outlined">auto_fix</span>
+                    <span>Исправить</span>
+                </button>
             </div>
         </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label for="templateCode">Шаблон документа</label>
-                <select id="templateCode">
-                    <option value="200">200 (входные-выходные-алгоритм)</option>
-                    <option value="325">325</option>
-                </select>
-            </div>
-            <button type="submit" id="generateBtn">
-                <span class="material-symbols-outlined">auto_awesome</span>
-                <span>Сгенерировать</span>
-            </button>
-        </div>
-    </form>
-
-    <div id="status" class="status hidden"></div>
-
-    <div id="result" class="result hidden">
-        <div class="result-header">
-            <h2>Результат генерации</h2>
-            <button id="copyBtn" class="copy-btn" title="Копировать текст">
-                <span class="material-symbols-outlined">content_copy</span>
-                <span>Копировать</span>
-            </button>
-        </div>
-        <pre id="docContent"></pre>
-        <div id="copyToast" class="copy-toast hidden">Скопировано!</div>
-    </div>
-
-    <div id="correction" class="correction hidden">
-        <div class="correction-header">
-            <span class="material-symbols-outlined">edit_note</span>
-            <span>Что-то не так? Напишите модели что исправить</span>
-        </div>
-        <textarea id="correctionInput" rows="3" placeholder="Например: убери раздел про исключения, добавь больше деталей по алгоритму..."></textarea>
-        <div class="correction-actions">
-            <button type="button" id="correctBtn" class="correction-btn">
-                <span class="material-symbols-outlined">auto_fix</span>
-                <span>Исправить</span>
-            </button>
-        </div>
-    </div>
+    </main>
 </div>
 
 <script src="script.js"></script>
