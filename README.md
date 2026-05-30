@@ -1,0 +1,42 @@
+# Local Documentation Helper
+
+Локальный сервис для автоматической генерации документации в формате Confluence Storage Format с использованием LLM.
+
+## Возможности
+
+- Генерация документации по Java-коду (входные/выходные/алгоритм)
+- Поддержка шаблонов документации (200, 325)
+- Локальная LLM без доступа в интернет (NDA-friendly)
+- Тёмная и светлая темы интерфейса
+- Копирование результата в буфер обмена
+
+## Стек
+
+- Java 17, Spring Boot 3, Spring AI
+- Ollama (локальный запуск моделей)
+- Docker, Docker Compose
+- HTML/CSS/JS (Vanilla)
+
+## Модели
+
+| Модель | Размер | ОЗУ | Скорость | Качество |
+|--------|--------|-----|----------|----------|
+| qwen2.5-coder:3b | 1.8 ГБ | ~2.5 ГБ | быстро | среднее |
+| deepseek-coder-v2:16b | 9.2 ГБ | ~10 ГБ | медленно | высокое |
+
+Модель меняется в `docker-compose.yml`, в секции `model-puller`.
+## Быстрый старт
+ 
+```bash
+# Клонировать репозиторий
+git clone <repo-url>
+cd LocalCoder
+
+# Запустить (Ollama + приложение)
+docker-compose up -d
+```
+
+После запуска: 
+ - Веб-интерфейс: http://localhost:8080 
+ - Swagger UI: http://localhost:8080/swagger-ui/index.html 
+ - OpenAPI JSON: http://localhost:8080/v3/api-docs
