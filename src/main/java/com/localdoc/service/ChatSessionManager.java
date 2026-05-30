@@ -3,11 +3,13 @@ package com.localdoc.service;
 import com.localdoc.exception.InvalidRequestException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
 public class ChatSessionManager {
@@ -32,6 +34,13 @@ public class ChatSessionManager {
     public void addMessage(String sessionId, Message message) {
         SessionEntry entry = getSession(sessionId);
         entry.messages.add(message);
+    }
+
+    public List<String> getAssistantMessages(String sessionId) {
+        return getSession(sessionId).getMessages().stream()
+                .filter(m -> m instanceof AssistantMessage)
+                .map(Message::getContent)
+                .collect(Collectors.toList());
     }
 
     @Getter

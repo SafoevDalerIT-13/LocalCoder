@@ -3,7 +3,7 @@ spring:
     ollama:
       base-url: http://localhost:11434
       chat:
-        model: deepseek-coder-v2:16b
+        model: Qwen3:1.7b
 
   application:
     name: LocalCoder
