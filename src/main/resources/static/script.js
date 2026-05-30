@@ -27,6 +27,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const newChatBtn = document.getElementById('newChatBtn');
     const versionBar = document.getElementById('versionBar');
     const versionList = document.getElementById('versionList');
+    const previewFrame = document.getElementById('previewFrame');
+    const viewToggle = document.getElementById('viewToggle');
+    let previewMode = false;
 
     // === State ===
     const STORAGE_KEY = 'localcoder_state';
@@ -233,7 +236,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const chat = getActiveChat();
         if (!chat || !chat.versions || idx < 0 || idx >= chat.versions.length) return;
         chat.currentVersion = idx;
-        docContent.textContent = chat.versions[idx];
+        const content = chat.versions[idx];
+        docContent.textContent = content;
+        if (previewMode) {
+            renderPreview(content);
+        }
         renderVersions(chat.versions, idx);
         saveState();
     }
@@ -273,6 +280,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // sync chat state
         const chat = getActiveChat();
         if (chat) {
+            chat.sourceCode = sourceCodeEl.value;
+            chat.templateCode = templateSelect.value;
             chat.sessionId = sessionId;
             chat.versions = versions;
             chat.currentVersion = idx;
@@ -357,6 +366,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    async function doCorrect(sessionId, message) {
+        const response = await fetch('/api/docs/correct', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId, message })
+        });
+        return response;
+    }
+
     // === Correct ===
     correctBtn.addEventListener('click', async function () {
         const message = correctionInput.value.trim();
@@ -365,28 +383,97 @@ document.addEventListener('DOMContentLoaded', () => {
         correctionInput.disabled = true;
         showStatus('Исправляю документацию...', 'info');
         try {
-            const response = await fetch('/api/docs/correct', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId: currentSessionId, message })
-            });
-            if (response.ok) {
-                const data = await response.json();
-                hideStatus();
-                showResult(data.documentation || 'Пустой ответ от модели', data.sessionId, data.versions || [], data.versionIndex);
-            } else {
-                let errorMsg = `Ошибка ${response.status}`;
-                try { const ed = await response.json(); errorMsg = ed.message || errorMsg; } catch (parseErr) {}
-                showStatus(errorMsg, 'error');
-                correctBtn.disabled = false;
-                correctionInput.disabled = false;
+            let response = await doCorrect(currentSessionId, message);
+            if (!response.ok) {
+                let errorMsg;
+                try { const ed = await response.json(); errorMsg = ed.message; } catch (parseErr) {}
+                // Session expired — re-generate then retry
+                if (errorMsg && errorMsg.includes('Сессия не найдена')) {
+                    const chat = getActiveChat();
+                    if (chat && chat.sourceCode) {
+                        showStatus('Сессия устарела, пересоздаю...', 'info');
+                        const genResp = await fetch('/api/docs/generate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ sourceCode: chat.sourceCode, templateCode: chat.templateCode })
+                        });
+                        if (genResp.ok) {
+                            const genData = await genResp.json();
+                            currentSessionId = genData.sessionId;
+                            chat.sessionId = genData.sessionId;
+                            chat.versions = genData.versions || [];
+                            chat.currentVersion = genData.versionIndex;
+                            response = await doCorrect(currentSessionId, message);
+                        } else {
+                            showStatus('Не удалось восстановить сессию. Вставьте код заново и нажмите «Сгенерировать».', 'error');
+                            correctBtn.disabled = false;
+                            correctionInput.disabled = false;
+                            return;
+                        }
+                    } else {
+                        showStatus('Исходный код не сохранён. Вставьте код заново и нажмите «Сгенерировать».', 'error');
+                        correctBtn.disabled = false;
+                        correctionInput.disabled = false;
+                        return;
+                    }
+                }
+                if (!response.ok) {
+                    try { const ed = await response.json(); errorMsg = ed.message || errorMsg; } catch (parseErr) {}
+                    showStatus(errorMsg || `Ошибка ${response.status}`, 'error');
+                    correctBtn.disabled = false;
+                    correctionInput.disabled = false;
+                    return;
+                }
             }
+            const data = await response.json();
+            hideStatus();
+            showResult(data.documentation || 'Пустой ответ от модели', data.sessionId, data.versions || [], data.versionIndex);
         } catch (err) {
             showStatus(`Сетевая ошибка: ${err.message}`, 'error');
             correctBtn.disabled = false;
             correctionInput.disabled = false;
         }
     });
+
+    // === View toggle ===
+    function renderPreview(html) {
+        const styled = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+            body { font-family: 'Inter', sans-serif; padding: 1rem; color: #1f2937; line-height: 1.6; }
+            h1 { font-size: 1.5rem; margin: 0 0 0.75rem; color: #111827; }
+            h2 { font-size: 1.2rem; margin: 1rem 0 0.5rem; color: #1f2937; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3rem; }
+            table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; }
+            th, td { border: 1px solid #d1d5db; padding: 0.4rem 0.6rem; text-align: left; font-size: 0.9rem; }
+            th { background: #f3f4f6; font-weight: 600; }
+            ol, ul { padding-left: 1.5rem; margin: 0.5rem 0; }
+            li { margin: 0.25rem 0; }
+            pre, code { font-family: 'Fira Code', monospace; background: #f1f5f9; border-radius: 6px; }
+            pre { padding: 0.75rem; overflow-x: auto; font-size: 0.85rem; }
+            code { padding: 0.1rem 0.3rem; font-size: 0.85rem; }
+            p { margin: 0.5rem 0; }
+            ac\\:structured-macro, ac\\:parameter, ac\\:plain-text-body { display: none; }
+        </style></head><body>${html}</body></html>`;
+        previewFrame.srcdoc = styled;
+    }
+
+    viewToggle.addEventListener('click', e => {
+        const btn = e.target.closest('.view-btn');
+        if (!btn) return;
+        viewToggle.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        previewMode = btn.dataset.view === 'preview';
+        docContent.classList.toggle('hidden', previewMode);
+        previewFrame.classList.toggle('hidden', !previewMode);
+        if (previewMode) {
+            renderPreview(docContent.textContent);
+        }
+    });
+
+    // Patch showResult to reset view
+    const _origShowResult = showResult;
+    window.showResult = showResult = function(text, sessionId, vers, verIdx) {
+        viewToggle.querySelector('.view-btn[data-view="code"]')?.click();
+        _origShowResult(text, sessionId, vers, verIdx);
+    };
 
     // === Copy ===
     copyBtn.addEventListener('click', async () => {

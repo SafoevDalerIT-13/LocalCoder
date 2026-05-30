@@ -89,12 +89,25 @@
         <div id="result" class="result hidden">
             <div class="result-header">
                 <h2>Результат генерации</h2>
-                <button id="copyBtn" class="copy-btn" title="Копировать текст">
-                    <span class="material-symbols-outlined">content_copy</span>
-                    <span>Копировать</span>
-                </button>
+                <div class="result-actions">
+                    <div class="view-toggle" id="viewToggle">
+                        <button class="view-btn active" data-view="code" title="Показать исходный код">
+                            <span class="material-symbols-outlined">code</span>
+                            <span>Код</span>
+                        </button>
+                        <button class="view-btn" data-view="preview" title="Предпросмотр">
+                            <span class="material-symbols-outlined">visibility</span>
+                            <span>Просмотр</span>
+                        </button>
+                    </div>
+                    <button id="copyBtn" class="copy-btn" title="Копировать текст">
+                        <span class="material-symbols-outlined">content_copy</span>
+                        <span>Копировать</span>
+                    </button>
+                </div>
             </div>
             <pre id="docContent"></pre>
+            <iframe id="previewFrame" class="preview-frame hidden" sandbox="allow-same-origin"></iframe>
             <div id="copyToast" class="copy-toast hidden">Скопировано!</div>
         </div>
 
