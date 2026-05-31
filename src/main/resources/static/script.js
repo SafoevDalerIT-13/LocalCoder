@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // DOM refs
     const form = document.getElementById('docForm');
     const sourceCodeEl = document.getElementById('sourceCode');
     const templateSelect = document.getElementById('templateCode');
@@ -25,20 +24,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebarReveal = document.getElementById('sidebarReveal');
     const chatList = document.getElementById('chatList');
     const newChatBtn = document.getElementById('newChatBtn');
+    const startBtn = document.getElementById('startBtn');
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    const mainWorkspace = document.getElementById('mainWorkspace');
     const versionBar = document.getElementById('versionBar');
     const versionList = document.getElementById('versionList');
     const previewFrame = document.getElementById('previewFrame');
     const viewToggle = document.getElementById('viewToggle');
     let previewMode = false;
 
-    // === State ===
     const STORAGE_KEY = 'localcoder_state';
     let chats = [];
     let activeChatId = null;
-    let currentSessionId = null;
     let versions = [];
 
-    // === Theme ===
     function setTheme(theme) {
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
@@ -59,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
     });
 
-    // === Persistence ===
     function saveState() {
         const state = {
             chats: chats.map(c => ({
@@ -67,7 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 name: c.name,
                 sourceCode: c.sourceCode,
                 templateCode: c.templateCode,
-                sessionId: c.sessionId,
                 versions: c.versions,
                 currentVersion: c.currentVersion
             })),
@@ -91,12 +88,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return chats.find(c => c.id === activeChatId) || null;
     }
 
-    function updateActiveChat(partial) {
-        const chat = getActiveChat();
-        if (chat) Object.assign(chat, partial);
+    function showWorkspace(hasChats) {
+        if (hasChats) {
+            welcomeScreen.classList.add('hidden');
+            mainWorkspace.classList.remove('hidden');
+            sidebar.classList.remove('hidden');
+        } else {
+            welcomeScreen.classList.remove('hidden');
+            mainWorkspace.classList.add('hidden');
+            hideResult();
+            sidebar.classList.add('hidden');
+            resetStartBtn();
+        }
     }
 
-    // === Chat management ===
     function startRename(chatId, spanEl) {
         const chat = chats.find(c => c.id === chatId);
         if (!chat) return;
@@ -117,6 +122,11 @@ document.addEventListener('DOMContentLoaded', () => {
             newSpan.textContent = val;
             input.replaceWith(newSpan);
             saveState();
+            fetch('/api/docs/chat/' + encodeURIComponent(chat.id) + '/rename', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'text/plain' },
+                body: val
+            });
         }
 
         input.addEventListener('blur', finish);
@@ -154,13 +164,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function createChat(name) {
+    async function createChat(name) {
+        const response = await fetch('/api/docs/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: name || 'Новый чат'
+        });
+        if (!response.ok) {
+            showStatus('Ошибка создания чата', 'error');
+            return null;
+        }
+        const data = await response.json();
         const chat = {
-            id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2),
-            name: name || 'Новый чат',
+            id: data.id,
+            name: data.name,
             sourceCode: '',
             templateCode: '200',
-            sessionId: null,
             versions: [],
             currentVersion: -1
         };
@@ -168,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
         activeChatId = chat.id;
         switchChat(chat.id);
         saveState();
+        showWorkspace(true);
         return chat;
     }
 
@@ -182,24 +202,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!chat) return;
         sourceCodeEl.value = chat.sourceCode || '';
         templateSelect.value = chat.templateCode || '200';
-        currentSessionId = chat.sessionId;
         versions = chat.versions || [];
         renderChatList();
-        if (chat.versions && chat.versions.length > 0 && chat.currentVersion >= 0) {
-            const idx = Math.min(chat.currentVersion, chat.versions.length - 1);
-            showResult(chat.versions[idx], chat.sessionId, chat.versions, idx);
+        if (versions.length > 0 && chat.currentVersion >= 0) {
+            const idx = Math.min(chat.currentVersion, versions.length - 1);
+            showResult(versions[idx], versions, idx);
+        } else if (versions.length > 0) {
+            const idx = versions.length - 1;
+            showResult(versions[idx], versions, idx);
         } else {
             hideResult();
-            currentSessionId = chat.sessionId || null;
         }
         saveState();
     }
 
-    function deleteChat(id) {
-        if (chats.length <= 1) return;
+    async function deleteChat(id) {
         const idx = chats.findIndex(c => c.id === id);
         if (idx === -1) return;
+        await fetch('/api/docs/chat/' + encodeURIComponent(id), { method: 'DELETE' });
         chats.splice(idx, 1);
+        if (chats.length === 0) {
+            activeChatId = null;
+            showWorkspace(false);
+            saveState();
+            return;
+        }
         if (activeChatId === id) {
             const next = chats[Math.min(idx, chats.length - 1)];
             switchChat(next.id);
@@ -215,7 +242,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return d.innerHTML;
     }
 
-    // === Version bar ===
     function renderVersions(vers, currentIdx) {
         versionList.innerHTML = '';
         if (!vers || vers.length === 0) {
@@ -234,18 +260,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function switchVersion(idx) {
         const chat = getActiveChat();
-        if (!chat || !chat.versions || idx < 0 || idx >= chat.versions.length) return;
+        if (!chat || idx < 0 || idx >= versions.length) return;
         chat.currentVersion = idx;
-        const content = chat.versions[idx];
+        const content = versions[idx];
         docContent.textContent = content;
         if (previewMode) {
             renderPreview(content);
         }
-        renderVersions(chat.versions, idx);
+        renderVersions(versions, idx);
         saveState();
     }
 
-    // === Status & Result ===
     function showStatus(message, type = 'info') {
         statusDiv.innerHTML = '';
         const dot = document.createElement('span');
@@ -266,10 +291,9 @@ document.addEventListener('DOMContentLoaded', () => {
         versionBar.classList.add('hidden');
     }
 
-    function showResult(text, sessionId, vers, verIdx) {
+    function showResult(text, vers, verIdx) {
         docContent.textContent = text;
         resultDiv.classList.remove('hidden');
-        currentSessionId = sessionId;
         versions = vers || [];
         const idx = verIdx != null ? verIdx : (versions.length - 1);
         renderVersions(versions, idx);
@@ -277,19 +301,16 @@ document.addEventListener('DOMContentLoaded', () => {
         correctionInput.value = '';
         correctBtn.disabled = false;
         correctionInput.disabled = false;
-        // sync chat state
         const chat = getActiveChat();
         if (chat) {
             chat.sourceCode = sourceCodeEl.value;
             chat.templateCode = templateSelect.value;
-            chat.sessionId = sessionId;
             chat.versions = versions;
             chat.currentVersion = idx;
             saveState();
         }
     }
 
-    // === File drop ===
     function readFile(file) {
         const ext = file.name.split('.').pop();
         const langMap = { java: 'Java', kt: 'Kotlin', groovy: 'Groovy', py: 'Python', js: 'JavaScript', ts: 'TypeScript', cs: 'C#', cpp: 'C++', c: 'C', h: 'C/C++ Header', rs: 'Rust', go: 'Go', swift: 'Swift' };
@@ -298,9 +319,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const reader = new FileReader();
         reader.onload = function (e) {
             sourceCodeEl.value = e.target.result;
-            // auto-name chat if unnamed
             const chat = getActiveChat();
-            if (chat) chat.name = file.name;
+            if (chat) {
+                chat.name = file.name;
+                fetch('/api/docs/chat/' + encodeURIComponent(chat.id) + '/rename', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: file.name
+                });
+            }
             renderChatList();
             if (sourceCodeEl.value.trim()) {
                 form.dispatchEvent(new Event('submit'));
@@ -323,7 +350,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (fileInput.files.length > 0) readFile(fileInput.files[0]);
     });
 
-    // === Generate ===
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
         const sourceCode = sourceCodeEl.value.trim();
@@ -335,21 +361,19 @@ document.addEventListener('DOMContentLoaded', () => {
         showStatus('Генерация документации...', 'info');
 
         try {
+            const chat = getActiveChat();
+            if (!chat) { showStatus('Нет активного чата', 'error'); generateBtn.disabled = false; return; }
             const response = await fetch('/api/docs/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sourceCode, templateCode })
+                body: JSON.stringify({ chatId: chat.id, sourceCode, templateCode })
             });
             if (response.ok) {
                 const data = await response.json();
                 hideStatus();
-                const chat = getActiveChat();
-                if (chat) {
-                    chat.sourceCode = sourceCode;
-                    chat.templateCode = templateCode;
-                    chat.sessionId = data.sessionId;
-                }
-                showResult(data.documentation || 'Пустой ответ от модели', data.sessionId, data.versions || [], data.versionIndex);
+                chat.sourceCode = sourceCode;
+                chat.templateCode = templateCode;
+                showResult(data.documentation || 'Пустой ответ от модели', data.versions || [], data.versionIndex);
             } else {
                 let errorMsg = `Ошибка ${response.status}`;
                 try {
@@ -366,68 +390,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    async function doCorrect(sessionId, message) {
+    async function doCorrect(chatId, message) {
         const response = await fetch('/api/docs/correct', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId, message })
+            body: JSON.stringify({ chatId, message })
         });
         return response;
     }
 
-    // === Correct ===
     correctBtn.addEventListener('click', async function () {
         const message = correctionInput.value.trim();
-        if (!message || !currentSessionId) return;
+        const chat = getActiveChat();
+        if (!message || !chat) return;
         correctBtn.disabled = true;
         correctionInput.disabled = true;
         showStatus('Исправляю документацию...', 'info');
         try {
-            let response = await doCorrect(currentSessionId, message);
+            const response = await doCorrect(chat.id, message);
             if (!response.ok) {
                 let errorMsg;
                 try { const ed = await response.json(); errorMsg = ed.message; } catch (parseErr) {}
-                // Session expired — re-generate then retry
-                if (errorMsg && errorMsg.includes('Сессия не найдена')) {
-                    const chat = getActiveChat();
-                    if (chat && chat.sourceCode) {
-                        showStatus('Сессия устарела, пересоздаю...', 'info');
-                        const genResp = await fetch('/api/docs/generate', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ sourceCode: chat.sourceCode, templateCode: chat.templateCode })
-                        });
-                        if (genResp.ok) {
-                            const genData = await genResp.json();
-                            currentSessionId = genData.sessionId;
-                            chat.sessionId = genData.sessionId;
-                            chat.versions = genData.versions || [];
-                            chat.currentVersion = genData.versionIndex;
-                            response = await doCorrect(currentSessionId, message);
-                        } else {
-                            showStatus('Не удалось восстановить сессию. Вставьте код заново и нажмите «Сгенерировать».', 'error');
-                            correctBtn.disabled = false;
-                            correctionInput.disabled = false;
-                            return;
-                        }
-                    } else {
-                        showStatus('Исходный код не сохранён. Вставьте код заново и нажмите «Сгенерировать».', 'error');
-                        correctBtn.disabled = false;
-                        correctionInput.disabled = false;
-                        return;
-                    }
-                }
-                if (!response.ok) {
-                    try { const ed = await response.json(); errorMsg = ed.message || errorMsg; } catch (parseErr) {}
-                    showStatus(errorMsg || `Ошибка ${response.status}`, 'error');
-                    correctBtn.disabled = false;
-                    correctionInput.disabled = false;
-                    return;
-                }
+                showStatus(errorMsg || `Ошибка ${response.status}`, 'error');
+                correctBtn.disabled = false;
+                correctionInput.disabled = false;
+                return;
             }
             const data = await response.json();
             hideStatus();
-            showResult(data.documentation || 'Пустой ответ от модели', data.sessionId, data.versions || [], data.versionIndex);
+            showResult(data.documentation || 'Пустой ответ от модели', data.versions || [], data.versionIndex);
         } catch (err) {
             showStatus(`Сетевая ошибка: ${err.message}`, 'error');
             correctBtn.disabled = false;
@@ -435,7 +426,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // === View toggle ===
     function renderPreview(html) {
         const styled = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
             body { font-family: 'Inter', sans-serif; padding: 1rem; color: #1f2937; line-height: 1.6; }
@@ -468,14 +458,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Patch showResult to reset view
     const _origShowResult = showResult;
-    window.showResult = showResult = function(text, sessionId, vers, verIdx) {
+    window.showResult = showResult = function(text, vers, verIdx) {
         viewToggle.querySelector('.view-btn[data-view="code"]')?.click();
-        _origShowResult(text, sessionId, vers, verIdx);
+        _origShowResult(text, vers, verIdx);
     };
 
-    // === Copy ===
     copyBtn.addEventListener('click', async () => {
         const text = docContent.textContent.trim();
         if (!text) return;
@@ -500,7 +488,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2000);
     });
 
-    // === Templates ===
     async function loadTemplates() {
         try {
             const response = await fetch('/api/docs/templates');
@@ -540,19 +527,30 @@ document.addEventListener('DOMContentLoaded', () => {
         setSidebarCollapsed(true);
     }
 
-    // === New chat ===
     newChatBtn.addEventListener('click', () => {
         createChat('Новый чат');
     });
 
-    // === Init ===
-    function init() {
+    function resetStartBtn() {
+        startBtn.disabled = false;
+        startBtn.innerHTML = '<span class="material-symbols-outlined">add_circle</span><span>Приступить к работе</span>';
+    }
+
+    startBtn.addEventListener('click', async () => {
+        startBtn.disabled = true;
+        startBtn.innerHTML = '<span class="material-symbols-outlined">sync</span><span>Создание...</span>';
+        const chat = await createChat('Новый чат');
+        if (chat) resetStartBtn();
+    });
+
+    async function init() {
         const hasSaved = loadState();
         if (hasSaved && chats.length > 0) {
             renderChatList();
+            showWorkspace(true);
             switchChat(activeChatId || chats[0].id);
         } else {
-            createChat('Чат 1');
+            showWorkspace(false);
         }
         loadTemplates();
     }

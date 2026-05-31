@@ -34,8 +34,10 @@
     <main class="main-content">
         <div class="header">
             <div class="title-section">
-                <h1 class="glow-title">Local Documentation Helper</h1>
-                <p class="subtitle">Локальная LLM — Confluence Helper</p>
+                <div>
+                    <h1 class="glow-title">Local Documentation Helper</h1>
+                    <p class="subtitle">Локальная LLM — Confluence Helper</p>
+                </div>
             </div>
             <button id="theme-toggle" class="theme-toggle" aria-label="Переключить тему">
                 <span class="material-symbols-outlined dark-icon">dark_mode</span>
@@ -43,6 +45,24 @@
             </button>
         </div>
 
+        <div id="welcomeScreen" class="welcome-screen">
+            <div class="welcome-content">
+                <div class="welcome-icon">
+                    <span class="material-symbols-outlined">auto_awesome</span>
+                </div>
+                <h2 class="welcome-title">Local Documentation Helper</h2>
+                <p class="welcome-desc">
+                    Генерируй документацию для исходного кода с помощью локальной LLM.<br>
+                    Загрузи файл, выбери шаблон документа и получи готовый XHTML для Confluence.
+                </p>
+                <button id="startBtn" class="welcome-btn">
+                    <span class="material-symbols-outlined">add_circle</span>
+                    <span>Приступить к работе</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="mainWorkspace" class="main-workspace">
         <form id="docForm">
             <div class="form-group">
                 <label for="sourceCode">Исходный код (Java)</label>
@@ -123,6 +143,7 @@
                     <span>Исправить</span>
                 </button>
             </div>
+        </div>
         </div>
     </main>
 </div>

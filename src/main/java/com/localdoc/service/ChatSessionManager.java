@@ -1,53 +1,88 @@
 package com.localdoc.service;
 
+import com.localdoc.entity.ChatEntity;
+import com.localdoc.entity.MessageEntity;
 import com.localdoc.exception.InvalidRequestException;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import com.localdoc.repository.ChatSessionRepository;
+import com.localdoc.repository.MessageRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class ChatSessionManager {
-    private final Map<String, SessionEntry> sessions = new ConcurrentHashMap<>();
+    private final ChatSessionRepository chatSessionRepository;
+    private final MessageRepository messageRepository;
 
-    public String createSession(String sourceCode, String templateCode) {
-        String sessionId = UUID.randomUUID().toString();
-        List<Message> messages = new ArrayList<>();
-        SessionEntry entry = new SessionEntry(sourceCode, templateCode, messages);
-        sessions.put(sessionId, entry);
-        return sessionId;
+    @Transactional
+    public ChatEntity createChat(String name) {
+        ChatEntity chat = new ChatEntity();
+        chat.setName(name != null && !name.isBlank() ? name : "Новый чат");
+        return chatSessionRepository.save(chat);
     }
 
-    public SessionEntry getSession(String sessionId) {
-        SessionEntry entry = sessions.get(sessionId);
-        if (entry == null) {
-            throw new InvalidRequestException("Сессия не найдена: " + sessionId);
+    @Transactional
+    public void deleteChat(UUID chatId) {
+        if (!chatSessionRepository.existsById(chatId)) {
+            throw new InvalidRequestException("Чат не найден: " + chatId);
         }
-        return entry;
+        chatSessionRepository.deleteById(chatId);
     }
 
-    public void addMessage(String sessionId, Message message) {
-        SessionEntry entry = getSession(sessionId);
-        entry.messages.add(message);
+    @Transactional
+    public void renameChat(UUID chatId, String newName) {
+        ChatEntity chat = chatSessionRepository.findById(chatId)
+                .orElseThrow(() -> new InvalidRequestException("Чат не найден: " + chatId));
+        chat.setName(newName);
+        chatSessionRepository.save(chat);
     }
 
-    public List<String> getAssistantMessages(String sessionId) {
-        return getSession(sessionId).getMessages().stream()
-                .filter(m -> m instanceof AssistantMessage)
-                .map(Message::getContent)
+    @Transactional
+    public void updateTemplateCode(UUID chatId, String templateCode) {
+        ChatEntity chat = chatSessionRepository.findById(chatId)
+                .orElseThrow(() -> new InvalidRequestException("Чат не найден: " + chatId));
+        chat.setTemplateCode(templateCode);
+        chatSessionRepository.save(chat);
+    }
+
+    public ChatEntity getChat(UUID chatId) {
+        return chatSessionRepository.findById(chatId)
+                .orElseThrow(() -> new InvalidRequestException("Чат не найден: " + chatId));
+    }
+
+    @Transactional
+    public void addMessage(UUID chatId, Message message) {
+        ChatEntity chat = getChat(chatId);
+        String role = message instanceof AssistantMessage ? "assistant" : "user";
+        MessageEntity entity = new MessageEntity();
+        entity.setRole(role);
+        entity.setContent(message.getContent());
+        entity.setChat(chat);
+        messageRepository.save(entity);
+    }
+
+    public List<Message> getMessages(UUID chatId) {
+        return messageRepository.findByChatIdOrderByCreatedAtAsc(chatId).stream()
+                .map(e -> {
+                    if ("assistant".equals(e.getRole())) {
+                        return new AssistantMessage(e.getContent());
+                    }
+                    return new org.springframework.ai.chat.messages.UserMessage(e.getContent());
+                })
                 .collect(Collectors.toList());
     }
 
-    @Getter
-    @AllArgsConstructor
-    public static class SessionEntry {
-        private final String sourceCode;
-        private final String templateCode;
-        private final List<Message> messages;
+    public List<String> getAssistantMessages(UUID chatId) {
+        return messageRepository.findByChatIdOrderByCreatedAtAsc(chatId).stream()
+                .filter(e -> "assistant".equals(e.getRole()))
+                .map(MessageEntity::getContent)
+                .collect(Collectors.toList());
     }
 }

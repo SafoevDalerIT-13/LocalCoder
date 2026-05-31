@@ -1,4 +1,4 @@
-package com.localdoc.dto.request;
+package com.localdoc.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,9 +9,7 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class DocumentationRequest {
-    private UUID chatId;
-    private String sourceCode;
-    private String templateCode;
+public class CreateChatResponse {
+    private UUID id;
     private String name;
 }
