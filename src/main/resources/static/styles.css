@@ -552,6 +552,32 @@ button {
     filter: none;
 }
 
+.stop-btn {
+    background: var(--btn-danger-bg, #dc2626);
+    color: white;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.95rem;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: background 0.2s, transform 0.1s;
+    line-height: 1;
+}
+
+.stop-btn:hover {
+    background: var(--btn-danger-hover-bg, #b91c1c);
+}
+
+.stop-btn.hidden {
+    display: none;
+}
+
 .copy-btn {
     background: var(--btn-copy-bg);
     border: 1px solid var(--btn-copy-border);
@@ -799,24 +825,26 @@ pre {
 }
 
 .copy-toast {
-    position: absolute;
-    bottom: 0.5rem;
-    right: 1rem;
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
     background: var(--toast-bg);
     color: var(--toast-text);
-    padding: 0.3rem 0.8rem;
+    padding: 0.5rem 1.2rem;
     border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 500;
+    font-size: 0.9rem;
+    font-weight: 600;
     opacity: 0;
-    transform: translateY(10px);
     transition: opacity 0.3s, transform 0.3s;
     pointer-events: none;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
 .copy-toast.visible {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
 }
 
 .hidden {
@@ -907,7 +935,526 @@ pre {
     animation: fadeSlideUp 0.35s ease;
 }
 
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1rem;
+    background: var(--bg-container);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-container);
+}
+
+.tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+
+.tab:hover {
+    background: var(--status-info-bg);
+    color: var(--status-info-text);
+}
+
+.tab.active {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+}
+
+.tab-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.tab .material-symbols-outlined {
+    font-size: 1.1rem;
+}
+
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* Project mode */
+.project-upload-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.upload-folder-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.55rem 1rem;
+    border: 2px dashed var(--input-border);
+    border-radius: 8px;
+    background: var(--input-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-family: inherit;
+    transition: all 0.15s;
+}
+
+.upload-folder-btn:hover {
+    border-color: var(--btn-primary-bg);
+    background: var(--status-info-bg);
+    color: var(--status-info-text);
+}
+
+.upload-folder-btn .material-symbols-outlined {
+    font-size: 1.2rem;
+}
+
+.upload-or {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.project-path-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.project-path-input {
+    flex: 1;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: 'Fira Code', monospace;
+    background: var(--input-bg);
+    color: var(--input-text);
+}
+
+.project-path-input:focus {
+    outline: none;
+    border-color: var(--btn-primary-bg);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.scan-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    background: var(--btn-copy-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-family: inherit;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.scan-btn:hover {
+    background: var(--btn-copy-hover-bg);
+    border-color: var(--btn-primary-bg);
+}
+
+.scan-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.scan-btn .material-symbols-outlined {
+    font-size: 1.1rem;
+}
+
+/* File tree */
+.file-tree {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border-container);
+    border-radius: 6px;
+    background: var(--bg-container);
+    padding: 0.25rem 0;
+}
+
+.file-tree-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.5rem;
+    cursor: default;
+    transition: background 0.1s;
+}
+
+.file-tree-item:hover {
+    background: var(--status-info-bg);
+}
+
+.file-tree-dir {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.5rem;
+    cursor: pointer;
+    transition: background 0.1s;
+    user-select: none;
+}
+
+.file-tree-dir:hover {
+    background: var(--status-info-bg);
+}
+
+.dir-arrow {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    width: 12px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.dir-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+.file-checkbox {
+    accent-color: var(--btn-primary-bg);
+    cursor: pointer;
+}
+
+.file-tree-name {
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: 'Fira Code', monospace;
+    cursor: pointer;
+    text-decoration: underline transparent;
+    text-underline-offset: 2px;
+    transition: text-decoration-color 0.15s;
+}
+
+.file-tree-item:hover .file-tree-name {
+    text-decoration-color: var(--btn-primary-bg);
+}
+
+a.file-tree-name:hover {
+    color: var(--status-info-text);
+}
+
+.file-tree-size {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    margin-left: auto;
+}
+
+.dir-children {
+    border-left: 1px solid var(--border-container);
+    margin-left: 8px;
+}
+
+.project-actions {
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.selected-count {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.project-send-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-family: inherit;
+    transition: all 0.15s;
+    white-space: nowrap;
+    margin-left: auto;
+}
+
+.project-send-btn:hover {
+    filter: brightness(1.1);
+}
+
+.project-send-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.project-send-btn .material-symbols-outlined {
+    font-size: 1rem;
+}
+
+.project-instruction {
+    margin-top: 0.75rem;
+}
+
+.project-instruction label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-label);
+    margin-bottom: 0.35rem;
+}
+
+.project-instruction textarea {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: var(--input-bg);
+    color: var(--input-text);
+    resize: vertical;
+    transition: border-color 0.15s;
+}
+
+.project-instruction textarea:focus {
+    outline: none;
+    border-color: var(--btn-primary-bg);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* File preview */
+.file-preview {
+    margin-top: 0.5rem;
+    border: 1px solid var(--border-container);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--bg-container);
+}
+
+.file-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.6rem;
+    background: var(--pre-bg);
+    border-bottom: 1px solid var(--border-container);
+}
+
+.file-preview-path {
+    font-size: 0.8rem;
+    font-family: 'Fira Code', monospace;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-preview-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    padding: 0.15rem;
+    border-radius: 4px;
+}
+
+.file-preview-close:hover {
+    background: var(--btn-copy-hover-bg);
+}
+
+.file-preview-close .material-symbols-outlined {
+    font-size: 1rem;
+}
+
+.file-preview-content {
+    max-height: 300px;
+    overflow: auto;
+    padding: 0.6rem;
+    font-size: 0.8rem;
+    font-family: 'Fira Code', monospace;
+    line-height: 1.4;
+    color: var(--pre-text);
+    background: var(--pre-bg);
+    white-space: pre;
+    tab-size: 4;
+    margin: 0;
+}
+
+/* File preview */
+.file-preview {
+    margin-top: 0.75rem;
+    border: 1px solid var(--border-container);
+    border-radius: 6px;
+    background: var(--bg-container);
+    overflow: hidden;
+}
+
+.file-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.75rem;
+    background: var(--input-bg);
+    border-bottom: 1px solid var(--border-container);
+}
+
+.preview-file-name {
+    font-size: 0.8rem;
+    font-family: 'Fira Code', monospace;
+    color: var(--text-secondary);
+}
+
+.preview-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+}
+
+.preview-close:hover {
+    background: var(--status-error-bg);
+    color: var(--status-error-text);
+}
+
+.preview-close .material-symbols-outlined {
+    font-size: 1rem;
+}
+
+.preview-content {
+    padding: 0.75rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--pre-text);
+    background: var(--pre-bg);
+    max-height: 400px;
+    overflow: auto;
+    white-space: pre;
+    tab-size: 4;
+}
+
 /* Responsive */
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+.modal {
+    background: var(--bg-container);
+    border: 1px solid var(--border-container);
+    border-radius: 12px;
+    padding: 1.5rem;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.modal-title {
+    margin: 0 0 1rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.modal-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.modal-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--input-border);
+    border-radius: 10px;
+    background: var(--input-bg);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s;
+    width: 100%;
+}
+.modal-option:hover {
+    border-color: var(--btn-primary-bg);
+    background: var(--chat-item-active);
+}
+.modal-option-icon {
+    font-size: 1.5rem;
+    color: var(--btn-primary-bg);
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+.modal-option-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: 0.2rem;
+}
+.modal-option-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    display: block;
+}
+.modal-close-btn {
+    margin-top: 1rem;
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.15s;
+}
+.modal-close-btn:hover {
+    background: var(--chat-item-hover);
+}
+
+.mode-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    background: var(--chat-item-active);
+    color: var(--btn-primary-bg);
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+    width: fit-content;
+}
+.mode-badge-icon {
+    font-size: 1.1rem;
+}
+
 @media (max-width: 768px) {
     .sidebar {
         width: 200px;

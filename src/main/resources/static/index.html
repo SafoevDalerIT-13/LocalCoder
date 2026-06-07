@@ -63,24 +63,73 @@
         </div>
 
         <div id="mainWorkspace" class="main-workspace">
+        <div class="tabs">
+            <button class="tab active" data-tab="simple">
+                <span class="material-symbols-outlined">edit_note</span>
+                <span>Обычный</span>
+            </button>
+            <button class="tab" data-tab="project">
+                <span class="material-symbols-outlined">folder_open</span>
+                <span>Проект</span>
+            </button>
+        </div>
+        <div id="modeBadge" class="mode-badge hidden">
+            <span class="material-symbols-outlined mode-badge-icon">edit_note</span>
+            <span class="mode-badge-text">Обычный</span>
+        </div>
+
         <form id="docForm">
-            <div class="form-group">
-                <label for="sourceCode">Исходный код (Java)</label>
-                <div class="drop-zone" id="dropZone">
-                    <textarea id="sourceCode" rows="12" placeholder="Вставьте код или перетащите .java файл сюда..." required></textarea>
-                    <div class="drop-overlay" id="dropOverlay">
-                        <span class="material-symbols-outlined drop-icon">upload_file</span>
-                        <span class="drop-text">Перетащите файл сюда</span>
-                        <span class="drop-hint">.java, .kt, .py, .js и другие</span>
+            <div id="tabSimple" class="tab-pane active">
+                <div class="form-group">
+                    <label for="sourceCode">Исходный код</label>
+                    <div class="drop-zone" id="dropZone">
+                        <textarea id="sourceCode" rows="12" placeholder="Вставьте код или перетащите .java файл сюда..." required></textarea>
+                        <div class="drop-overlay" id="dropOverlay">
+                            <span class="material-symbols-outlined drop-icon">upload_file</span>
+                            <span class="drop-text">Перетащите файл сюда</span>
+                            <span class="drop-hint">.java, .kt, .py, .js и другие</span>
+                        </div>
+                    </div>
+                    <div class="file-input-row">
+                        <button type="button" id="fileBtn" class="file-btn">
+                            <span class="material-symbols-outlined">attach_file</span>
+                            <span>Выбрать файл</span>
+                        </button>
+                        <span id="fileName" class="file-name"></span>
+                        <input type="file" id="fileInput" accept=".java,.kt,.groovy,.py,.js,.ts,.cs,.cpp,.c,.h,.rs,.go,.swift,.kt,.kts" hidden>
                     </div>
                 </div>
-                <div class="file-input-row">
-                    <button type="button" id="fileBtn" class="file-btn">
-                        <span class="material-symbols-outlined">attach_file</span>
-                        <span>Выбрать файл</span>
+            </div>
+
+            <div id="tabProject" class="tab-pane">
+                <div class="project-upload-row">
+                    <button type="button" id="uploadFolderBtn" class="upload-folder-btn">
+                        <span class="material-symbols-outlined">upload_folder</span>
+                        <span>Загрузить папку с проектом</span>
                     </button>
-                    <span id="fileName" class="file-name"></span>
-                    <input type="file" id="fileInput" accept=".java,.kt,.groovy,.py,.js,.ts,.cs,.cpp,.c,.h,.rs,.go,.swift,.kt,.kts" hidden>
+                    <input type="file" id="folderInput" webkitdirectory multiple style="display:none">
+                </div>
+                <input type="hidden" id="projectPath">
+                <div id="fileTree" class="file-tree"></div>
+                <div id="filePreview" class="file-preview hidden">
+                    <div class="file-preview-header">
+                        <span id="previewFileName" class="preview-file-name"></span>
+                        <button type="button" id="previewClose" class="preview-close">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+                    <pre id="previewContent" class="preview-content"></pre>
+                </div>
+                <div class="project-instruction">
+                    <label for="projectInstruction">Запрос к ИИ</label>
+                    <textarea id="projectInstruction" rows="3" placeholder="Напишите, что сделать с выбранными файлами... Например: сделай документацию для класса UserService"></textarea>
+                </div>
+                <div id="projectActions" class="project-actions hidden">
+                    <span id="selectedCount" class="selected-count">0 файлов выбрано</span>
+                    <button type="button" id="projectSendBtn" class="project-send-btn">
+                        <span class="material-symbols-outlined">send</span>
+                        <span>Отправить</span>
+                    </button>
                 </div>
             </div>
 
@@ -90,11 +139,17 @@
                     <select id="templateCode">
                         <option value="200">200 (входные-выходные-алгоритм)</option>
                         <option value="325">325</option>
+                        <option value="211">211 (входные-выходные-ошибки)</option>
+                        <option value="230">230 (общие сведения-алгоритм)</option>
                     </select>
                 </div>
                 <button type="submit" id="generateBtn">
                     <span class="material-symbols-outlined">auto_awesome</span>
                     <span>Сгенерировать</span>
+                </button>
+                <button type="button" id="stopBtn" class="stop-btn hidden">
+                    <span class="material-symbols-outlined">stop</span>
+                    <span>Стоп</span>
                 </button>
             </div>
         </form>
@@ -146,6 +201,25 @@
         </div>
         </div>
     </main>
+</div>
+
+<div id="modeModal" class="modal-overlay hidden">
+    <div class="modal">
+        <h3 class="modal-title">Выберите режим чата</h3>
+        <div class="modal-options">
+            <button class="modal-option" data-mode="simple">
+                <span class="material-symbols-outlined modal-option-icon">edit_note</span>
+                <span class="modal-option-title">Обычный чат</span>
+                <span class="modal-option-desc">Генерация документации для одного файла с кодом</span>
+            </button>
+            <button class="modal-option" data-mode="project">
+                <span class="material-symbols-outlined modal-option-icon">folder_open</span>
+                <span class="modal-option-title">Проект чат</span>
+                <span class="modal-option-desc">Работа с целой папкой проекта, выбор файлов</span>
+            </button>
+        </div>
+        <button class="modal-close-btn" id="modalCloseBtn">Отмена</button>
+    </div>
 </div>
 
 <script src="script.js"></script>

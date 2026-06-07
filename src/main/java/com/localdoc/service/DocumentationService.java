@@ -39,16 +39,22 @@ public class DocumentationService {
                 .map(com.localdoc.entity.TemplateEntity::getContent)
                 .orElseThrow(() -> new TemplateNotFoundException(templateCode));
 
-        String prompt = template + "\n\n```java\n" + sourceCode + "\n```";
-        log.debug("Промпт сформирован, длина={} символов", prompt.length());
+        List<Message> messages = new ArrayList<>();
+        messages.add(new SystemMessage(template));
+        messages.add(new UserMessage("Проанализируй этот код и создай документацию строго по инструкции выше (только XHTML, без markdown):\n\n" + sourceCode));
+
+        log.debug("Промпт сформирован, длина={} символов", template.length() + sourceCode.length());
 
         try {
             log.info("Отправка запроса к LLM...");
-            String result = chatClient.prompt()
-                    .user(prompt)
+            String result = chatClient.prompt(new Prompt(messages))
                     .call()
                     .content();
             log.info("Ответ от LLM получен, длина={} символов", result != null ? result.length() : 0);
+
+            if (result != null) {
+                result = result.replaceAll("(?s)^```[a-zA-Z]*\\s*", "").replaceAll("(?s)```\\s*$", "").trim();
+            }
             return result;
         } catch (Exception e) {
             log.error("Ошибка при вызове LLM: {}", e.getMessage(), e);
@@ -72,7 +78,7 @@ public class DocumentationService {
                         .orElse("Исправь документацию на основе замечания.")
                 : "Исправь документацию на основе замечания.";
 
-        String reminder = "\n\nИсправь документацию на основе замечания выше. Выведи ТОЛЬКО готовый XHTML, без обрамляющих ```html, ```xml или любых других маркдаун-блоков. Сразу начинай вывод с XHTML-тегов.";
+        String reminder = "\n\nИсправь документацию по замечанию выше. Выведи ТОЛЬКО готовый XHTML, без обрамляющих маркдаун-блоков. Начинай сразу с XHTML-тегов.";
         sessionManager.addMessage(chatId, new UserMessage(userMessage + reminder));
 
         List<Message> messages = new ArrayList<>();
@@ -89,6 +95,7 @@ public class DocumentationService {
             log.info("Ответ на корректировку получен, длина={} символов", result != null ? result.length() : 0);
 
             if (result != null) {
+                result = result.replaceAll("(?s)^```[a-zA-Z]*\\s*", "").replaceAll("(?s)```\\s*$", "").trim();
                 sessionManager.addMessage(chatId, new AssistantMessage(result));
             }
             return result;
@@ -97,4 +104,5 @@ public class DocumentationService {
             throw new DocumentationGenerationException("Ошибка при корректировке документации", e);
         }
     }
+
 }
