@@ -33,6 +33,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewToggle = document.getElementById('viewToggle');
     let previewMode = false;
 
+    const projectPath = document.getElementById('projectPath');
+    const fileTree = document.getElementById('fileTree');
+    const projectActions = document.getElementById('projectActions');
+    const selectedCount = document.getElementById('selectedCount');
+    const filePreview = document.getElementById('filePreview');
+    const previewContent = document.getElementById('previewContent');
+    const previewFileName = document.getElementById('previewFileName');
+    const previewClose = document.getElementById('previewClose');
+    const projectSendBtn = document.getElementById('projectSendBtn');
+    const projectInstruction = document.getElementById('projectInstruction');
+    const uploadFolderBtn = document.getElementById('uploadFolderBtn');
+    const folderInput = document.getElementById('folderInput');
+    const stopBtn = document.getElementById('stopBtn');
+    const modeModal = document.getElementById('modeModal');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+    if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', () => modeModal.classList.add('hidden'));
+    }
+    if (modeModal) {
+        modeModal.addEventListener('click', (e) => {
+            if (e.target === modeModal) modeModal.classList.add('hidden');
+        });
+    }
+
     const STORAGE_KEY = 'localcoder_state';
     let chats = [];
     let activeChatId = null;
@@ -63,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             chats: chats.map(c => ({
                 id: c.id,
                 name: c.name,
+                mode: c.mode || 'simple',
                 sourceCode: c.sourceCode,
                 templateCode: c.templateCode,
                 versions: c.versions,
@@ -164,11 +190,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    async function createChat(name) {
+    async function createChat(name, mode) {
         const response = await fetch('/api/docs/chat', {
             method: 'POST',
-            headers: { 'Content-Type': 'text/plain' },
-            body: name || 'Новый чат'
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name || 'Новый чат', mode: mode || 'simple' })
         });
         if (!response.ok) {
             showStatus('Ошибка создания чата', 'error');
@@ -178,20 +204,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const chat = {
             id: data.id,
             name: data.name,
+            mode: data.mode || 'simple',
             sourceCode: '',
             templateCode: '200',
             versions: [],
             currentVersion: -1
         };
         chats.push(chat);
-        activeChatId = chat.id;
-        switchChat(chat.id);
+        await switchChat(chat.id);
         saveState();
         showWorkspace(true);
         return chat;
     }
 
-    function switchChat(id) {
+    async function switchChat(id) {
         const prev = getActiveChat();
         if (prev) {
             prev.sourceCode = sourceCodeEl.value;
@@ -203,6 +229,21 @@ document.addEventListener('DOMContentLoaded', () => {
         sourceCodeEl.value = chat.sourceCode || '';
         templateSelect.value = chat.templateCode || '200';
         versions = chat.versions || [];
+        const targetTab = chat.mode === 'project' ? 'project' : 'simple';
+        document.querySelector('.tabs').classList.toggle('hidden', true);
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab' + targetTab.charAt(0).toUpperCase() + targetTab.slice(1)));
+        generateBtn.querySelector('span:last-child').textContent = targetTab === 'project' ? 'Генерировать для выбранных' : 'Сгенерировать';
+        const badge = document.getElementById('modeBadge');
+        const badgeIcon = badge.querySelector('.mode-badge-icon');
+        const badgeText = badge.querySelector('.mode-badge-text');
+        if (targetTab === 'project') {
+            badgeIcon.textContent = 'folder_open';
+            badgeText.textContent = 'Режим: Проект';
+        } else {
+            badgeIcon.textContent = 'edit_note';
+            badgeText.textContent = 'Режим: Обычный';
+        }
+        badge.classList.remove('hidden');
         renderChatList();
         if (versions.length > 0 && chat.currentVersion >= 0) {
             const idx = Math.min(chat.currentVersion, versions.length - 1);
@@ -212,6 +253,21 @@ document.addEventListener('DOMContentLoaded', () => {
             showResult(versions[idx], versions, idx);
         } else {
             hideResult();
+        }
+        if (_generatingChatId !== null) {
+            if (id === _generatingChatId) {
+                setInputsDisabled(true);
+                showStatus('Генерация документации...', 'info');
+            } else {
+                if (abortController) {
+                    abortController.abort();
+                    abortController = null;
+                }
+                _submitting = false;
+                _generatingChatId = null;
+                setInputsDisabled(false);
+                hideStatus();
+            }
         }
         saveState();
     }
@@ -229,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (activeChatId === id) {
             const next = chats[Math.min(idx, chats.length - 1)];
-            switchChat(next.id);
+            await switchChat(next.id);
         } else {
             renderChatList();
         }
@@ -240,6 +296,121 @@ document.addEventListener('DOMContentLoaded', () => {
         const d = document.createElement('div');
         d.textContent = s;
         return d.innerHTML;
+    }
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function buildFileTree(files) {
+        const root = {};
+        files.forEach(f => {
+            const parts = f.path.split('/');
+            let node = root;
+            parts.forEach((part, i) => {
+                if (i === parts.length - 1) {
+                    node[part] = { type: 'file', path: f.path, size: f.size };
+                } else {
+                    if (!node[part]) node[part] = { type: 'dir', children: {} };
+                    node = node[part].children;
+                }
+            });
+        });
+        return root;
+    }
+
+    function renderTreeNodes(nodes, depth) {
+        const entries = Object.entries(nodes).sort((a, b) => {
+            if (a[1].type !== b[1].type) return a[1].type === 'file' ? 1 : -1;
+            return a[0].localeCompare(b[0]);
+        });
+        let html = '';
+        entries.forEach(([name, data]) => {
+            if (data.type === 'file') {
+                html += `<div class="file-tree-item" style="padding-left:${depth * 20 + 8}px">
+                    <input type="checkbox" class="file-checkbox" data-path="${escHtml(data.path)}">
+                    <span class="file-tree-name">${escHtml(name)}</span>
+                    <span class="file-tree-size">${formatSize(data.size)}</span>
+                </div>`;
+            } else {
+                html += `<div class="file-tree-dir" style="padding-left:${depth * 20 + 8}px">
+                    <span class="dir-arrow">▶</span>
+                    <span class="dir-name">${escHtml(name)}/</span>
+                </div>
+                <div class="dir-children" style="display:none">${renderTreeNodes(data.children, depth + 1)}</div>`;
+            }
+        });
+        return html;
+    }
+
+    async function showFilePreview(relativePath) {
+        const rootPath = projectPath.value.trim().replace(/\\/g, '/').replace(/\/+$/, '');
+        const fullPath = rootPath + '/' + relativePath;
+
+        previewFileName.textContent = relativePath;
+        previewContent.textContent = 'Загрузка...';
+        filePreview.classList.remove('hidden');
+
+        try {
+            const response = await fetch('/api/docs/project/read?path=' + encodeURIComponent(fullPath));
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                previewContent.textContent = err.error || 'Ошибка загрузки файла';
+                return;
+            }
+            const data = await response.json();
+            previewContent.textContent = data.content || '(пустой файл)';
+        } catch (err) {
+            previewContent.textContent = 'Ошибка: ' + err.message;
+        }
+    }
+
+    previewClose.addEventListener('click', () => {
+        filePreview.classList.add('hidden');
+    });
+
+    function renderFileTree(files) {
+        const tree = buildFileTree(files);
+        fileTree.innerHTML = renderTreeNodes(tree, 0);
+        projectActions.classList.remove('hidden');
+        hidePreview();
+        updateSelectedCount();
+        fileTree.querySelectorAll('.file-checkbox').forEach(cb => {
+            cb.addEventListener('change', updateSelectedCount);
+        });
+        fileTree.addEventListener('click', e => {
+            if (e.target.closest('.file-checkbox')) return;
+            const arrow = e.target.closest('.dir-arrow');
+            if (arrow) {
+                const dirEl = arrow.closest('.file-tree-dir');
+                const children = dirEl.nextElementSibling;
+                if (children && children.classList.contains('dir-children')) {
+                    const closed = children.style.display === 'none';
+                    children.style.display = closed ? '' : 'none';
+                    arrow.textContent = closed ? '▼' : '▶';
+                }
+                return;
+            }
+            const item = e.target.closest('.file-tree-item');
+            if (item) {
+                const cb = item.querySelector('.file-checkbox');
+                if (cb) showFilePreview(cb.dataset.path);
+            }
+        });
+    }
+
+    function hidePreview() {
+        filePreview.classList.add('hidden');
+        previewContent.textContent = '';
+    }
+
+    function updateSelectedCount() {
+        const count = document.querySelectorAll('.file-checkbox:checked').length;
+        const word = count % 10 === 1 && count % 100 !== 11 ? 'файл' :
+                     count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20) ? 'файла' : 'файлов';
+        selectedCount.textContent = count + ' ' + word + ' выбрано';
     }
 
     function renderVersions(vers, currentIdx) {
@@ -289,6 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
         resultDiv.classList.add('hidden');
         correctionDiv.classList.add('hidden');
         versionBar.classList.add('hidden');
+        fileName.textContent = '';
     }
 
     function showResult(text, vers, verIdx) {
@@ -311,6 +483,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let _submitting = false;
+    let _generatingChatId = null;
+    let abortController = null;
+
+    function setInputsDisabled(disabled) {
+        sourceCodeEl.disabled = disabled;
+        templateSelect.disabled = disabled;
+        correctionInput.disabled = disabled;
+        correctBtn.disabled = disabled;
+        projectInstruction.disabled = disabled;
+        projectSendBtn.disabled = disabled;
+        fileBtn.disabled = disabled;
+        uploadFolderBtn.disabled = disabled;
+        generateBtn.disabled = disabled;
+        document.querySelectorAll('.file-checkbox').forEach(cb => cb.disabled = disabled);
+        document.querySelectorAll('.tab').forEach(tab => tab.style.pointerEvents = disabled ? 'none' : '');
+        stopBtn.classList.toggle('hidden', !disabled);
+    }
+
     function readFile(file) {
         const ext = file.name.split('.').pop();
         const langMap = { java: 'Java', kt: 'Kotlin', groovy: 'Groovy', py: 'Python', js: 'JavaScript', ts: 'TypeScript', cs: 'C#', cpp: 'C++', c: 'C', h: 'C/C++ Header', rs: 'Rust', go: 'Go', swift: 'Swift' };
@@ -329,8 +520,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
             renderChatList();
-            if (sourceCodeEl.value.trim()) {
-                form.dispatchEvent(new Event('submit'));
+            if (sourceCodeEl.value.trim() && !_submitting) {
+                doGenerate();
             }
         };
         reader.readAsText(file);
@@ -350,43 +541,165 @@ document.addEventListener('DOMContentLoaded', () => {
         if (fileInput.files.length > 0) readFile(fileInput.files[0]);
     });
 
-    form.addEventListener('submit', async function (e) {
-        e.preventDefault();
+    async function doGenerate() {
+        if (_submitting) return;
         const sourceCode = sourceCodeEl.value.trim();
         const templateCode = templateSelect.value;
         if (!sourceCode) { showStatus('Введите исходный код', 'error'); return; }
 
-        generateBtn.disabled = true;
+        _submitting = true;
+        setInputsDisabled(true);
         hideResult();
         showStatus('Генерация документации...', 'info');
 
+        const chat = getActiveChat();
+        if (!chat) { showStatus('Нет активного чата', 'error'); setInputsDisabled(false); _submitting = false; return; }
+
+        const originChatId = chat.id;
+        _generatingChatId = originChatId;
+        abortController = new AbortController();
+
         try {
-            const chat = getActiveChat();
-            if (!chat) { showStatus('Нет активного чата', 'error'); generateBtn.disabled = false; return; }
             const response = await fetch('/api/docs/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chatId: chat.id, sourceCode, templateCode })
+                body: JSON.stringify({ chatId: chat.id, sourceCode, templateCode }),
+                signal: abortController.signal
             });
             if (response.ok) {
                 const data = await response.json();
                 hideStatus();
-                chat.sourceCode = sourceCode;
-                chat.templateCode = templateCode;
-                showResult(data.documentation || 'Пустой ответ от модели', data.versions || [], data.versionIndex);
+                const originChat = chats.find(c => c.id === originChatId);
+                if (originChat) {
+                    originChat.sourceCode = sourceCode;
+                    originChat.templateCode = templateCode;
+                    originChat.versions = data.versions || [];
+                    originChat.currentVersion = data.versionIndex;
+                }
+                if (activeChatId === originChatId) {
+                    showResult(data.documentation || 'Пустой ответ от модели', data.versions || [], data.versionIndex);
+                } else {
+                    saveState();
+                }
             } else {
-                let errorMsg = `Ошибка ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    if (errorData.message) errorMsg = errorData.message;
-                    else if (errorData.error) errorMsg = `${errorData.error}: ${errorData.message || ''}`;
-                } catch (parseErr) {}
-                showStatus(errorMsg, 'error');
+                if (activeChatId === originChatId) {
+                    let errorMsg = `Ошибка ${response.status}`;
+                    try { const errorData = await response.json(); errorMsg = errorData.message || errorData.error || errorMsg; } catch (e) {}
+                    showStatus(errorMsg, 'error');
+                }
             }
         } catch (err) {
-            showStatus(`Сетевая ошибка: ${err.message}`, 'error');
+            if (err.name === 'AbortError') {
+                if (activeChatId === originChatId) {
+                    showStatus('Генерация прервана', 'info');
+                    setTimeout(hideStatus, 3000);
+                }
+            } else if (activeChatId === originChatId) {
+                showStatus(`Ошибка: ${err.message}`, 'error');
+            }
         } finally {
-            generateBtn.disabled = false;
+            if (activeChatId !== originChatId) hideStatus();
+            setInputsDisabled(false);
+            _submitting = false;
+            _generatingChatId = null;
+            abortController = null;
+        }
+    }
+
+    async function doProjectGenerate() {
+        if (_submitting) return;
+
+        const checked = document.querySelectorAll('.file-checkbox:checked');
+        if (checked.length === 0) {
+            showStatus('Выберите файлы для генерации', 'error');
+            return;
+        }
+
+        const rootPath = projectPath.value.trim().replace(/\\/g, '/').replace(/\/+$/, '');
+        if (!rootPath) {
+            showStatus('Сначала загрузите папку с проектом', 'error');
+            return;
+        }
+
+        _submitting = true;
+        setInputsDisabled(true);
+
+        const files = Array.from(checked).map(cb => rootPath + '/' + cb.dataset.path);
+        const templateCode = templateSelect.value;
+
+        console.log('[Project] Генерация для', files.length, 'файлов, шаблон:', templateCode);
+        files.forEach(f => console.log('[Project]   файл:', f));
+
+        showStatus('Генерация документации для ' + files.length + ' файлов...', 'info');
+
+        try {
+            console.log('[Project] POST /api/docs/project/generate');
+            const response = await fetch('/api/docs/project/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ files, templateCode })
+            });
+
+            console.log('[Project] Ответ:', response.status, response.statusText);
+            if (!response.ok) {
+                const errText = await response.text();
+                console.error('[Project] Ошибка:', errText);
+                let errMsg;
+                try { errMsg = JSON.parse(errText).error; } catch(e) { errMsg = errText; }
+                showStatus(errMsg || 'Ошибка генерации', 'error');
+                setInputsDisabled(false);
+                _submitting = false;
+                return;
+            }
+
+            const results = await response.json();
+            console.log('[Project] Результатов:', results.length);
+            hideStatus();
+
+            let firstChatId = null;
+            results.forEach(r => {
+                if (!r.documentation) return;
+                const chat = {
+                    id: r.chatId,
+                    name: r.filePath.split('/').pop().split('\\').pop(),
+                    mode: 'project',
+                    sourceCode: '',
+                    templateCode: templateCode,
+                    versions: [r.documentation],
+                    currentVersion: 0
+                };
+                chats.push(chat);
+                if (!firstChatId) firstChatId = chat.id;
+            });
+
+            saveState();
+            renderChatList();
+            if (firstChatId) await switchChat(firstChatId);
+
+            showStatus('Сгенерировано: ' + results.length + ' файлов', 'info');
+            setTimeout(hideStatus, 3000);
+        } catch (err) {
+            showStatus('Ошибка: ' + err.message, 'error');
+        } finally {
+            setInputsDisabled(false);
+            _submitting = false;
+        }
+    }
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (_submitting) return;
+        if (document.querySelector('.tab.active').dataset.tab === 'project') {
+            doProjectGenerate();
+        } else {
+            doGenerate();
+        }
+    });
+
+    stopBtn.addEventListener('click', function () {
+        if (abortController) {
+            abortController.abort();
+            abortController = null;
         }
     });
 
@@ -403,29 +716,65 @@ document.addEventListener('DOMContentLoaded', () => {
         const message = correctionInput.value.trim();
         const chat = getActiveChat();
         if (!message || !chat) return;
-        correctBtn.disabled = true;
-        correctionInput.disabled = true;
+
+        const originChatId = chat.id;
+        _generatingChatId = originChatId;
+        _submitting = true;
+        setInputsDisabled(true);
         showStatus('Исправляю документацию...', 'info');
+
+        abortController = new AbortController();
+
         try {
-            const response = await doCorrect(chat.id, message);
+            const response = await fetch('/api/docs/correct', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chatId: chat.id, message }),
+                signal: abortController.signal
+            });
+
             if (!response.ok) {
-                let errorMsg;
-                try { const ed = await response.json(); errorMsg = ed.message; } catch (parseErr) {}
-                showStatus(errorMsg || `Ошибка ${response.status}`, 'error');
-                correctBtn.disabled = false;
-                correctionInput.disabled = false;
+                if (activeChatId === originChatId) {
+                    let errorMsg = `Ошибка ${response.status}`;
+                    try { const ed = await response.json(); errorMsg = ed.message || errorMsg; } catch (e) {}
+                    showStatus(errorMsg, 'error');
+                }
+                setInputsDisabled(false);
+                _submitting = false;
+                _generatingChatId = null;
                 return;
             }
+
             const data = await response.json();
             hideStatus();
-            showResult(data.documentation || 'Пустой ответ от модели', data.versions || [], data.versionIndex);
+            const originChat = chats.find(c => c.id === originChatId);
+            if (originChat) {
+                originChat.versions = data.versions || [];
+                originChat.currentVersion = data.versionIndex;
+            }
+            if (activeChatId === originChatId) {
+                showResult(data.documentation || 'Пустой ответ от модели', data.versions || [], data.versionIndex);
+            } else {
+                saveState();
+            }
         } catch (err) {
-            showStatus(`Сетевая ошибка: ${err.message}`, 'error');
-            correctBtn.disabled = false;
-            correctionInput.disabled = false;
+            if (err.name === 'AbortError') {
+                if (activeChatId === originChatId) {
+                    showStatus('Корректировка прервана', 'info');
+                    setTimeout(hideStatus, 3000);
+                }
+            } else if (activeChatId === originChatId) {
+                showStatus(`Ошибка: ${err.message}`, 'error');
+            }
+        } finally {
+            if (activeChatId !== originChatId) hideStatus();
+            setInputsDisabled(false);
+            _submitting = false;
+            _generatingChatId = null;
+            abortController = null;
         }
     });
-
+    
     function renderPreview(html) {
         const styled = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
             body { font-family: 'Inter', sans-serif; padding: 1rem; color: #1f2937; line-height: 1.6; }
@@ -527,8 +876,35 @@ document.addEventListener('DOMContentLoaded', () => {
         setSidebarCollapsed(true);
     }
 
+    function showModeModal(onSelect) {
+        modeModal.classList.remove('hidden');
+        const handler = (e) => {
+            const btn = e.target.closest('.modal-option');
+            if (!btn) return;
+            modeModal.classList.add('hidden');
+            modeModal.removeEventListener('click', handler);
+            onSelect(btn.dataset.mode);
+        };
+        modeModal.addEventListener('click', handler);
+    }
+
     newChatBtn.addEventListener('click', () => {
-        createChat('Новый чат');
+        showModeModal((mode) => {
+            if (abortController) {
+                abortController.abort();
+                abortController = null;
+            }
+            _submitting = false;
+            _generatingChatId = null;
+            setInputsDisabled(false);
+            correctionInput.value = '';
+            projectInstruction.value = '';
+            projectPath.value = '';
+            const fileListEl = document.getElementById('projectFileList');
+            if (fileListEl) fileListEl.innerHTML = '';
+            document.querySelectorAll('.file-checkbox:checked').forEach(cb => cb.checked = false);
+            createChat('Новый чат', mode);
+        });
     });
 
     function resetStartBtn() {
@@ -536,11 +912,150 @@ document.addEventListener('DOMContentLoaded', () => {
         startBtn.innerHTML = '<span class="material-symbols-outlined">add_circle</span><span>Приступить к работе</span>';
     }
 
-    startBtn.addEventListener('click', async () => {
-        startBtn.disabled = true;
-        startBtn.innerHTML = '<span class="material-symbols-outlined">sync</span><span>Создание...</span>';
-        const chat = await createChat('Новый чат');
-        if (chat) resetStartBtn();
+    startBtn.addEventListener('click', () => {
+        showModeModal(async (mode) => {
+            startBtn.disabled = true;
+            startBtn.innerHTML = '<span class="material-symbols-outlined">sync</span><span>Создание...</span>';
+            const chat = await createChat('Новый чат', mode);
+            if (chat) resetStartBtn();
+        });
+    });
+
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const chat = getActiveChat();
+            if (chat && chat.mode === 'simple' && tab.dataset.tab === 'project') return;
+            if (chat && chat.mode === 'project' && tab.dataset.tab === 'simple') return;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById('tab' + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)).classList.add('active');
+            generateBtn.querySelector('span:last-child').textContent =
+                tab.dataset.tab === 'project' ? 'Генерировать для выбранных' : 'Сгенерировать';
+        });
+    });
+
+    uploadFolderBtn.addEventListener('click', () => folderInput.click());
+
+    folderInput.addEventListener('change', async () => {
+        if (folderInput.files.length === 0) return;
+        console.log('[Project] Загрузка', folderInput.files.length, 'файлов');
+        showStatus('Загрузка ' + folderInput.files.length + ' файлов...', 'info');
+
+        const fileData = [];
+        for (const file of folderInput.files) {
+            const content = await file.text();
+            fileData.push({ path: file.webkitRelativePath, content });
+        }
+        console.log('[Project] Файлы прочитаны, отправка...');
+
+        try {
+            console.log('[Project] POST /api/docs/project/upload');
+            const response = await fetch('/api/docs/project/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(fileData)
+            });
+            console.log('[Project] Ответ:', response.status, response.statusText);
+            if (!response.ok) {
+                const err = await response.json();
+                console.error('[Project] Ошибка:', err);
+                showStatus(err.error || 'Ошибка загрузки', 'error');
+                return;
+            }
+            const data = await response.json();
+            console.log('[Project] Загружено, root:', data.root, 'файлов:', data.files.length);
+            hideStatus();
+            projectPath.value = data.root;
+            renderFileTree(data.files);
+        } catch (err) {
+            console.error('[Project] Ошибка:', err);
+            showStatus('Ошибка: ' + err.message, 'error');
+        } finally {
+            folderInput.value = '';
+        }
+    });
+
+    projectSendBtn.addEventListener('click', async () => {
+        const instruction = projectInstruction.value.trim();
+        const checked = document.querySelectorAll('.file-checkbox:checked');
+
+        if (checked.length === 0) {
+            showStatus('Выберите файлы', 'error');
+            return;
+        }
+        if (!instruction) {
+            showStatus('Напишите, что сделать с файлами', 'error');
+            return;
+        }
+
+        _submitting = true;
+        setInputsDisabled(true);
+        showStatus('Отправка запроса...', 'info');
+
+        const rootPath = projectPath.value.trim().replace(/\\/g, '/').replace(/\/+$/, '');
+        const files = Array.from(checked).map(cb => rootPath + '/' + cb.dataset.path);
+        const originChatId = activeChatId;
+        _generatingChatId = originChatId;
+
+        abortController = new AbortController();
+
+        try {
+            const response = await fetch('/api/docs/project/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ files, instruction }),
+                signal: abortController.signal
+            });
+
+            if (!response.ok) {
+                if (activeChatId === originChatId) {
+                    const err = await response.json();
+                    showStatus(err.error || 'Ошибка', 'error');
+                }
+                setInputsDisabled(false);
+                _submitting = false;
+                _generatingChatId = null;
+                return;
+            }
+
+            const data = await response.json();
+            hideStatus();
+
+            const chat = {
+                id: data.chatId,
+                name: 'Проект: ' + checked.length + ' файлов',
+                mode: 'project',
+                sourceCode: '',
+                templateCode: '200',
+                versions: data.versions || [],
+                currentVersion: data.versionIndex || 0
+            };
+            chats.push(chat);
+            saveState();
+            renderChatList();
+            if (activeChatId === originChatId) {
+                await switchChat(chat.id);
+            }
+
+            showStatus('Готово', 'info');
+            setTimeout(hideStatus, 2000);
+        } catch (err) {
+            if (err.name === 'AbortError') {
+                if (activeChatId === originChatId) {
+                    showStatus('Запрос прерван', 'info');
+                    setTimeout(hideStatus, 3000);
+                }
+            } else if (activeChatId === originChatId) {
+                showStatus('Ошибка: ' + err.message, 'error');
+            }
+        } finally {
+            if (activeChatId !== originChatId) hideStatus();
+            setInputsDisabled(false);
+            _submitting = false;
+            _generatingChatId = null;
+            abortController = null;
+        }
     });
 
     async function init() {
@@ -548,7 +1063,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (hasSaved && chats.length > 0) {
             renderChatList();
             showWorkspace(true);
-            switchChat(activeChatId || chats[0].id);
+            await switchChat(activeChatId || chats[0].id);
         } else {
             showWorkspace(false);
         }

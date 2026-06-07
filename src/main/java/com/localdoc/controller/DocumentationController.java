@@ -1,6 +1,7 @@
 package com.localdoc.controller;
 
 import com.localdoc.dto.request.CorrectionRequest;
+import com.localdoc.dto.request.CreateChatRequest;
 import com.localdoc.dto.request.DocumentationRequest;
 import com.localdoc.dto.response.CreateChatResponse;
 import com.localdoc.dto.response.DocumentationResponse;
@@ -28,10 +29,10 @@ public class DocumentationController {
     final TemplateRepository templateRepository;
 
     @PostMapping("/chat")
-    public ResponseEntity<CreateChatResponse> createChat(@RequestBody(required = false) String name) {
-        ChatEntity chat = sessionManager.createChat(name);
-        log.info("Создан новый чат: id={}, name={}", chat.getId(), chat.getName());
-        return ResponseEntity.ok(new CreateChatResponse(chat.getId(), chat.getName()));
+    public ResponseEntity<CreateChatResponse> createChat(@RequestBody CreateChatRequest request) {
+        ChatEntity chat = sessionManager.createChat(request.getName(), request.getMode());
+        log.info("Создан новый чат: id={}, name={}, mode={}", chat.getId(), chat.getName(), chat.getMode());
+        return ResponseEntity.ok(new CreateChatResponse(chat.getId(), chat.getName(), chat.getMode()));
     }
 
     @DeleteMapping("/chat/{chatId}")
@@ -63,8 +64,7 @@ public class DocumentationController {
         long durationMs = System.currentTimeMillis() - startTime;
         double durationSec = durationMs / 1000.0;
 
-        String userContent = "Сгенерируй документацию для кода:\n\n```java\n" + request.getSourceCode() + "\n```\n\nШаблон: " + request.getTemplateCode();
-        sessionManager.addMessage(chatId, new UserMessage(userContent));
+        sessionManager.addMessage(chatId, new UserMessage("Сгенерируй документацию для кода:\n\n" + request.getSourceCode() + "\n\nШаблон: " + request.getTemplateCode()));
         if (documentation != null) {
             sessionManager.addMessage(chatId, new AssistantMessage(documentation));
         }
