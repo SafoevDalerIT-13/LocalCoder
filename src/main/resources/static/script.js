@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetTab = chat.mode === 'project' ? 'project' : 'simple';
         document.querySelector('.tabs').classList.toggle('hidden', true);
         document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab' + targetTab.charAt(0).toUpperCase() + targetTab.slice(1)));
-        generateBtn.querySelector('span:last-child').textContent = targetTab === 'project' ? 'Генерировать для выбранных' : 'Сгенерировать';
+        generateBtn.querySelector('span:last-child').textContent = 'Сгенерировать';
         const badge = document.getElementById('modeBadge');
         const badgeIcon = badge.querySelector('.mode-badge-icon');
         const badgeText = badge.querySelector('.mode-badge-text');
@@ -606,91 +606,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function doProjectGenerate() {
-        if (_submitting) return;
-
-        const checked = document.querySelectorAll('.file-checkbox:checked');
-        if (checked.length === 0) {
-            showStatus('Выберите файлы для генерации', 'error');
-            return;
-        }
-
-        const rootPath = projectPath.value.trim().replace(/\\/g, '/').replace(/\/+$/, '');
-        if (!rootPath) {
-            showStatus('Сначала загрузите папку с проектом', 'error');
-            return;
-        }
-
-        _submitting = true;
-        setInputsDisabled(true);
-
-        const files = Array.from(checked).map(cb => rootPath + '/' + cb.dataset.path);
-        const templateCode = templateSelect.value;
-
-        console.log('[Project] Генерация для', files.length, 'файлов, шаблон:', templateCode);
-        files.forEach(f => console.log('[Project]   файл:', f));
-
-        showStatus('Генерация документации для ' + files.length + ' файлов...', 'info');
-
-        try {
-            console.log('[Project] POST /api/docs/project/generate');
-            const response = await fetch('/api/docs/project/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ files, templateCode })
-            });
-
-            console.log('[Project] Ответ:', response.status, response.statusText);
-            if (!response.ok) {
-                const errText = await response.text();
-                console.error('[Project] Ошибка:', errText);
-                let errMsg;
-                try { errMsg = JSON.parse(errText).error; } catch(e) { errMsg = errText; }
-                showStatus(errMsg || 'Ошибка генерации', 'error');
-                setInputsDisabled(false);
-                _submitting = false;
-                return;
-            }
-
-            const results = await response.json();
-            console.log('[Project] Результатов:', results.length);
-            hideStatus();
-
-            let firstChatId = null;
-            results.forEach(r => {
-                if (!r.documentation) return;
-                const chat = {
-                    id: r.chatId,
-                    name: r.filePath.split('/').pop().split('\\').pop(),
-                    mode: 'project',
-                    sourceCode: '',
-                    templateCode: templateCode,
-                    versions: [r.documentation],
-                    currentVersion: 0
-                };
-                chats.push(chat);
-                if (!firstChatId) firstChatId = chat.id;
-            });
-
-            saveState();
-            renderChatList();
-            if (firstChatId) await switchChat(firstChatId);
-
-            showStatus('Сгенерировано: ' + results.length + ' файлов', 'info');
-            setTimeout(hideStatus, 3000);
-        } catch (err) {
-            showStatus('Ошибка: ' + err.message, 'error');
-        } finally {
-            setInputsDisabled(false);
-            _submitting = false;
-        }
-    }
-
     form.addEventListener('submit', function (e) {
         e.preventDefault();
         if (_submitting) return;
-        if (document.querySelector('.tab.active').dataset.tab === 'project') {
-            doProjectGenerate();
+        const chat = getActiveChat();
+        if (chat && chat.mode === 'project') {
+            const checked = document.querySelectorAll('.file-checkbox:checked');
+            if (checked.length === 0) {
+                showStatus('Выберите файлы', 'error');
+                return;
+            }
+            if (!projectInstruction.value.trim()) {
+                projectInstruction.value = 'Сделай документацию в формате XHTML для каждого из этих файлов. Шаблон: ' + templateSelect.value;
+            }
+            projectSendBtn.click();
         } else {
             doGenerate();
         }
@@ -930,8 +859,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
             tab.classList.add('active');
             document.getElementById('tab' + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)).classList.add('active');
-            generateBtn.querySelector('span:last-child').textContent =
-                tab.dataset.tab === 'project' ? 'Генерировать для выбранных' : 'Сгенерировать';
+            generateBtn.querySelector('span:last-child').textContent = 'Сгенерировать';
         });
     });
 
