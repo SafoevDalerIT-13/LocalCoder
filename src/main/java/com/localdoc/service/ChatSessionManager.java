@@ -22,9 +22,10 @@ public class ChatSessionManager {
     private final MessageRepository messageRepository;
 
     @Transactional
-    public ChatEntity createChat(String name) {
+    public ChatEntity createChat(String name, String mode) {
         ChatEntity chat = new ChatEntity();
         chat.setName(name != null && !name.isBlank() ? name : "Новый чат");
+        chat.setMode(mode != null && !mode.isBlank() ? mode : "simple");
         return chatSessionRepository.save(chat);
     }
 

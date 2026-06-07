@@ -1,0 +1,8 @@
+target/
+data/
+uploaded/
+.git/
+.gitignore
+*.md
+.DS_Store
+node_modules/

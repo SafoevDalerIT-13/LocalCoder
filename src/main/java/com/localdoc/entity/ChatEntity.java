@@ -33,6 +33,9 @@ public class ChatEntity {
     @Column
     private String name;
 
+    @Column(name = "mode", length = 20)
+    private String mode = "simple";
+
     @Column(name = "template_code", length = 50)
     private String templateCode;
 
