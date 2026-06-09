@@ -590,6 +590,40 @@ button {
     background: var(--btn-copy-hover-bg);
 }
 
+.download-dropdown {
+    position: relative;
+    display: inline-block;
+}
+.download-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 100;
+    min-width: 120px;
+    background: var(--bg-container);
+    border: 1px solid var(--border-container);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    overflow: hidden;
+    margin-top: 4px;
+}
+.download-option {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s;
+    font-family: inherit;
+}
+.download-option:hover {
+    background: var(--chat-item-hover);
+}
+
 .status {
     padding: 0.75rem 1rem;
     border-radius: 12px;
@@ -1132,9 +1166,16 @@ pre {
     font-size: 0.85rem;
 }
 
-.file-checkbox {
+.file-checkbox,
+.file-radio {
     accent-color: var(--btn-primary-bg);
     cursor: pointer;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.file-radio {
+    margin-left: 0;
 }
 
 .file-tree-name {
@@ -1206,37 +1247,6 @@ a.file-tree-name:hover {
 
 .project-send-btn .material-symbols-outlined {
     font-size: 1rem;
-}
-
-.project-instruction {
-    margin-top: 0.75rem;
-}
-
-.project-instruction label {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-label);
-    margin-bottom: 0.35rem;
-}
-
-.project-instruction textarea {
-    width: 100%;
-    padding: 0.55rem 0.75rem;
-    border: 1px solid var(--input-border);
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-family: inherit;
-    background: var(--input-bg);
-    color: var(--input-text);
-    resize: vertical;
-    transition: border-color 0.15s;
-}
-
-.project-instruction textarea:focus {
-    outline: none;
-    border-color: var(--btn-primary-bg);
-    box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 /* File preview */

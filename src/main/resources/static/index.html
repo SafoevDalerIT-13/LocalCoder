@@ -120,16 +120,8 @@
                     </div>
                     <pre id="previewContent" class="preview-content"></pre>
                 </div>
-                <div class="project-instruction">
-                    <label for="projectInstruction">Запрос к ИИ</label>
-                    <textarea id="projectInstruction" rows="3" placeholder="Например: сделай документацию для класса UserService. Если оставить пустым — сгенерируется стандартная документация по шаблону"></textarea>
-                </div>
                 <div id="projectActions" class="project-actions hidden">
                     <span id="selectedCount" class="selected-count">0 файлов выбрано</span>
-                    <button type="button" id="projectSendBtn" class="project-send-btn">
-                        <span class="material-symbols-outlined">send</span>
-                        <span>Отправить</span>
-                    </button>
                 </div>
             </div>
 
@@ -179,10 +171,22 @@
                         <span class="material-symbols-outlined">content_copy</span>
                         <span>Копировать</span>
                     </button>
+                    <div class="download-dropdown">
+                        <button id="downloadBtn" class="copy-btn" title="Скачать результат">
+                            <span class="material-symbols-outlined">download</span>
+                            <span>Скачать</span>
+                        </button>
+                        <div id="downloadMenu" class="download-menu hidden">
+                            <button class="download-option" data-format="html">HTML</button>
+                            <button class="download-option" data-format="md">MD</button>
+                            <button class="download-option" data-format="pdf">PDF</button>
+                            <button class="download-option" data-format="docx">DOCX</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <pre id="docContent"></pre>
-            <iframe id="previewFrame" class="preview-frame hidden" sandbox="allow-same-origin"></iframe>
+            <iframe id="previewFrame" class="preview-frame hidden" sandbox="allow-scripts allow-same-origin"></iframe>
             <div id="copyToast" class="copy-toast hidden">Скопировано!</div>
         </div>
 

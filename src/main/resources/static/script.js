@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const docContent = document.getElementById('docContent');
     const copyBtn = document.getElementById('copyBtn');
     const copyToast = document.getElementById('copyToast');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const downloadMenu = document.getElementById('downloadMenu');
     const themeToggle = document.getElementById('theme-toggle');
     const darkIcon = document.querySelector('.dark-icon');
     const lightIcon = document.querySelector('.light-icon');
@@ -41,8 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewContent = document.getElementById('previewContent');
     const previewFileName = document.getElementById('previewFileName');
     const previewClose = document.getElementById('previewClose');
-    const projectSendBtn = document.getElementById('projectSendBtn');
-    const projectInstruction = document.getElementById('projectInstruction');
     const uploadFolderBtn = document.getElementById('uploadFolderBtn');
     const folderInput = document.getElementById('folderInput');
     const stopBtn = document.getElementById('stopBtn');
@@ -330,6 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         entries.forEach(([name, data]) => {
             if (data.type === 'file') {
                 html += `<div class="file-tree-item" style="padding-left:${depth * 20 + 8}px">
+                    <input type="radio" name="primaryFile" class="file-radio" data-path="${escHtml(data.path)}" title="Основной файл для документации">
                     <input type="checkbox" class="file-checkbox" data-path="${escHtml(data.path)}">
                     <span class="file-tree-name">${escHtml(name)}</span>
                     <span class="file-tree-size">${formatSize(data.size)}</span>
@@ -380,8 +381,18 @@ document.addEventListener('DOMContentLoaded', () => {
         fileTree.querySelectorAll('.file-checkbox').forEach(cb => {
             cb.addEventListener('change', updateSelectedCount);
         });
+        fileTree.querySelectorAll('.file-radio').forEach(rb => {
+            rb.addEventListener('change', () => {
+                if (rb.checked) {
+                    const cb = rb.closest('.file-tree-item').querySelector('.file-checkbox');
+                    if (cb) cb.checked = true;
+                    updateSelectedCount();
+                }
+            });
+        });
         fileTree.addEventListener('click', e => {
             if (e.target.closest('.file-checkbox')) return;
+            if (e.target.closest('.file-radio')) return;
             const arrow = e.target.closest('.dir-arrow');
             if (arrow) {
                 const dirEl = arrow.closest('.file-tree-dir');
@@ -407,10 +418,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateSelectedCount() {
-        const count = document.querySelectorAll('.file-checkbox:checked').length;
-        const word = count % 10 === 1 && count % 100 !== 11 ? 'файл' :
-                     count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20) ? 'файла' : 'файлов';
-        selectedCount.textContent = count + ' ' + word + ' выбрано';
+        const checked = document.querySelectorAll('.file-checkbox:checked').length;
+        const primary = document.querySelector('.file-radio:checked');
+        let text = checked + ' файлов выбрано';
+        if (primary) {
+            const name = primary.closest('.file-tree-item').querySelector('.file-tree-name').textContent;
+            text += ' — главный: ' + name;
+        } else {
+            text += ' (выберите главный файл для документации)';
+        }
+        selectedCount.textContent = text;
     }
 
     function renderVersions(vers, currentIdx) {
@@ -492,12 +509,11 @@ document.addEventListener('DOMContentLoaded', () => {
         templateSelect.disabled = disabled;
         correctionInput.disabled = disabled;
         correctBtn.disabled = disabled;
-        projectInstruction.disabled = disabled;
-        projectSendBtn.disabled = disabled;
         fileBtn.disabled = disabled;
         uploadFolderBtn.disabled = disabled;
         generateBtn.disabled = disabled;
         document.querySelectorAll('.file-checkbox').forEach(cb => cb.disabled = disabled);
+        document.querySelectorAll('.file-radio').forEach(rb => rb.disabled = disabled);
         document.querySelectorAll('.tab').forEach(tab => tab.style.pointerEvents = disabled ? 'none' : '');
         stopBtn.classList.toggle('hidden', !disabled);
     }
@@ -611,15 +627,89 @@ document.addEventListener('DOMContentLoaded', () => {
         if (_submitting) return;
         const chat = getActiveChat();
         if (chat && chat.mode === 'project') {
-            const checked = document.querySelectorAll('.file-checkbox:checked');
-            if (checked.length === 0) {
-                showStatus('Выберите файлы', 'error');
+            const primaryRb = document.querySelector('.file-radio:checked');
+            if (!primaryRb) {
+                showStatus('Выберите главный файл для документирования (радио-кнопка слева)', 'error');
                 return;
             }
-            if (!projectInstruction.value.trim()) {
-                projectInstruction.value = 'Сделай документацию в формате XHTML для каждого из этих файлов. Шаблон: ' + templateSelect.value;
+            const contextCbs = document.querySelectorAll('.file-checkbox:checked');
+            if (contextCbs.length === 0) {
+                showStatus('Выберите файлы для контекста', 'error');
+                return;
             }
-            projectSendBtn.click();
+            const rootPath = projectPath.value.trim().replace(/\\/g, '/').replace(/\/+$/, '');
+            if (!rootPath) {
+                showStatus('Сначала загрузите папку с проектом', 'error');
+                return;
+            }
+
+            const primaryFile = rootPath + '/' + primaryRb.dataset.path;
+            const contextFiles = Array.from(contextCbs)
+                .map(cb => rootPath + '/' + cb.dataset.path)
+                .filter(f => f !== primaryFile);
+            const templateCode = templateSelect.value;
+
+            _submitting = true;
+            setInputsDisabled(true);
+            showStatus('Генерация документации...', 'info');
+
+            const originChatId = activeChatId;
+            _generatingChatId = originChatId;
+            abortController = new AbortController();
+
+            (async () => {
+                try {
+                    const response = await fetch('/api/docs/project/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ primaryFile, contextFiles, templateCode }),
+                        signal: abortController.signal
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        if (activeChatId === originChatId) {
+                            showStatus(err.error || 'Ошибка генерации', 'error');
+                        }
+                        return;
+                    }
+
+                    const data = await response.json();
+                    hideStatus();
+
+                    const newChat = {
+                        id: data.chatId,
+                        name: primaryRb.dataset.path.split('/').pop(),
+                        mode: 'project',
+                        sourceCode: '',
+                        templateCode: templateCode,
+                        versions: data.versions || [],
+                        currentVersion: data.versionIndex || 0
+                    };
+                    chats.push(newChat);
+                    saveState();
+                    renderChatList();
+                    if (activeChatId === originChatId) {
+                        await switchChat(newChat.id);
+                    }
+                    showStatus('Готово', 'info');
+                    setTimeout(hideStatus, 2000);
+                } catch (err) {
+                    if (err.name === 'AbortError') {
+                        if (activeChatId === originChatId) {
+                            showStatus('Генерация прервана', 'info');
+                            setTimeout(hideStatus, 3000);
+                        }
+                    } else if (activeChatId === originChatId) {
+                        showStatus('Ошибка: ' + err.message, 'error');
+                    }
+                } finally {
+                    setInputsDisabled(false);
+                    _submitting = false;
+                    _generatingChatId = null;
+                    abortController = null;
+                }
+            })();
         } else {
             doGenerate();
         }
@@ -766,6 +856,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2000);
     });
 
+    downloadBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        downloadMenu.classList.toggle('hidden');
+    });
+    document.addEventListener('click', () => downloadMenu.classList.add('hidden'));
+    downloadMenu.addEventListener('click', (e) => e.stopPropagation());
+
+    document.querySelectorAll('.download-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const format = btn.dataset.format;
+            const chatId = activeChatId;
+            const chat = chats.find(c => c.id === chatId);
+            const versionIndex = chat ? chat.currentVersion : null;
+            if (!chatId || versionIndex == null || versionIndex < 0) return;
+            downloadMenu.classList.add('hidden');
+            window.open(`/api/docs/export/${chatId}/${versionIndex}?format=${format}`, '_blank');
+        });
+    });
+
     async function loadTemplates() {
         try {
             const response = await fetch('/api/docs/templates');
@@ -827,7 +936,6 @@ document.addEventListener('DOMContentLoaded', () => {
             _generatingChatId = null;
             setInputsDisabled(false);
             correctionInput.value = '';
-            projectInstruction.value = '';
             projectPath.value = '';
             const fileListEl = document.getElementById('projectFileList');
             if (fileListEl) fileListEl.innerHTML = '';
@@ -904,87 +1012,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    projectSendBtn.addEventListener('click', async () => {
-        const instruction = projectInstruction.value.trim();
-        const checked = document.querySelectorAll('.file-checkbox:checked');
 
-        if (checked.length === 0) {
-            showStatus('Выберите файлы', 'error');
-            return;
-        }
-        if (!instruction) {
-            showStatus('Напишите, что сделать с файлами', 'error');
-            return;
-        }
-
-        _submitting = true;
-        setInputsDisabled(true);
-        showStatus('Отправка запроса...', 'info');
-
-        const rootPath = projectPath.value.trim().replace(/\\/g, '/').replace(/\/+$/, '');
-        const files = Array.from(checked).map(cb => rootPath + '/' + cb.dataset.path);
-        const originChatId = activeChatId;
-        _generatingChatId = originChatId;
-
-        abortController = new AbortController();
-
-        try {
-            const response = await fetch('/api/docs/project/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ files, instruction }),
-                signal: abortController.signal
-            });
-
-            if (!response.ok) {
-                if (activeChatId === originChatId) {
-                    const err = await response.json();
-                    showStatus(err.error || 'Ошибка', 'error');
-                }
-                setInputsDisabled(false);
-                _submitting = false;
-                _generatingChatId = null;
-                return;
-            }
-
-            const data = await response.json();
-            hideStatus();
-
-            const chat = {
-                id: data.chatId,
-                name: 'Проект: ' + checked.length + ' файлов',
-                mode: 'project',
-                sourceCode: '',
-                templateCode: '200',
-                versions: data.versions || [],
-                currentVersion: data.versionIndex || 0
-            };
-            chats.push(chat);
-            saveState();
-            renderChatList();
-            if (activeChatId === originChatId) {
-                await switchChat(chat.id);
-            }
-
-            showStatus('Готово', 'info');
-            setTimeout(hideStatus, 2000);
-        } catch (err) {
-            if (err.name === 'AbortError') {
-                if (activeChatId === originChatId) {
-                    showStatus('Запрос прерван', 'info');
-                    setTimeout(hideStatus, 3000);
-                }
-            } else if (activeChatId === originChatId) {
-                showStatus('Ошибка: ' + err.message, 'error');
-            }
-        } finally {
-            if (activeChatId !== originChatId) hideStatus();
-            setInputsDisabled(false);
-            _submitting = false;
-            _generatingChatId = null;
-            abortController = null;
-        }
-    });
 
     async function init() {
         const hasSaved = loadState();

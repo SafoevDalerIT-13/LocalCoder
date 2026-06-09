@@ -1,6 +1,7 @@
 package com.localdoc.service;
 
 import com.localdoc.entity.ChatEntity;
+import com.localdoc.repository.TemplateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -25,6 +26,7 @@ public class ProjectService {
     private final ChatSessionManager sessionManager;
     private final DocumentationService documentationService;
     private final ChatClient chatClient;
+    private final TemplateRepository templateRepository;
 
     public List<FileInfo> scanDirectory(String rootPath) throws IOException {
         Path root = Paths.get(rootPath).toAbsolutePath().normalize();
@@ -83,20 +85,43 @@ public class ProjectService {
         return Files.readString(path);
     }
 
-    public ChatResult chatWithFiles(List<String> filePaths, String instruction) throws IOException {
-        StringBuilder combined = new StringBuilder();
-        for (String filePath : filePaths) {
-            Path path = Paths.get(filePath).toAbsolutePath().normalize();
-            if (!Files.isRegularFile(path)) continue;
-            String content = Files.readString(path);
-            combined.append("// ===== ").append(path.getFileName()).append(" =====\n");
-            combined.append(content).append("\n\n");
+    public ChatResult chatWithFiles(String primaryFile, List<String> contextFiles, String instruction, String templateCode) throws IOException {
+        Path primaryPath = Paths.get(primaryFile).toAbsolutePath().normalize();
+        if (!Files.isRegularFile(primaryPath)) {
+            throw new IllegalArgumentException("Файл не найден: " + primaryFile);
+        }
+        String primaryContent = Files.readString(primaryPath);
+
+        String template = templateRepository.findById(templateCode)
+                .map(com.localdoc.entity.TemplateEntity::getContent)
+                .orElse("Создай документацию для предоставленного кода в формате XHTML.");
+
+        StringBuilder prompt = new StringBuilder();
+        prompt.append(template).append("\n\n");
+        if (instruction != null && !instruction.isBlank()) {
+            prompt.append("Дополнительные указания от пользователя: ").append(instruction).append("\n\n");
+        }
+        prompt.append("Основной файл для документирования:\n");
+        prompt.append("// ===== ").append(primaryPath.getFileName()).append(" =====\n");
+        prompt.append(primaryContent).append("\n\n");
+
+        if (contextFiles != null && !contextFiles.isEmpty()) {
+            prompt.append("Контекст (зависимости, DTO, утилиты — документировать их не нужно, только используй для понимания):\n");
+            for (String cf : contextFiles) {
+                if (cf.equals(primaryFile)) continue;
+                Path cfPath = Paths.get(cf).toAbsolutePath().normalize();
+                if (!Files.isRegularFile(cfPath)) continue;
+                String cfContent = Files.readString(cfPath);
+                prompt.append("// ===== ").append(cfPath.getFileName()).append(" =====\n");
+                prompt.append(cfContent).append("\n\n");
+            }
         }
 
-        String userContent = instruction + "\n\nФайлы проекта:\n" + combined;
-        ChatEntity chat = sessionManager.createChat("Проект: " + filePaths.size() + " файлов", "project");
+        String fileName = primaryPath.getFileName().toString();
+        ChatEntity chat = sessionManager.createChat(fileName, "project");
         UUID chatId = chat.getId();
 
+        String userContent = prompt.toString();
         sessionManager.addMessage(chatId, new UserMessage(userContent));
 
         String result = chatClient.prompt()

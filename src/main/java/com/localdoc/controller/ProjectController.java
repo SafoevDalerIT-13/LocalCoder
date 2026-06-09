@@ -81,24 +81,26 @@ public class ProjectController {
     @SuppressWarnings("unchecked")
     @PostMapping("/chat")
     public ResponseEntity<?> chat(@RequestBody Map<String, Object> body) {
-        List<String> files = (List<String>) body.get("files");
+        String primaryFile = (String) body.get("primaryFile");
+        List<String> contextFiles = (List<String>) body.get("contextFiles");
         String instruction = (String) body.get("instruction");
-        log.info("Чат с проектом: {} файлов, длина запроса={}", files != null ? files.size() : 0,
-                instruction != null ? instruction.length() : 0);
+        String templateCode = (String) body.get("templateCode");
 
-        if (files == null || files.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Список файлов пуст"));
+        if (primaryFile == null || primaryFile.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Не выбран основной файл для документирования"));
         }
-        if (instruction == null || instruction.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Напишите, что сделать с файлами"));
-        }
+
+        log.info("Запрос на генерацию: primaryFile={}, contextFiles={}, templateCode={}",
+                primaryFile, contextFiles != null ? contextFiles.size() : 0, templateCode);
 
         try {
-            ProjectService.ChatResult result = projectService.chatWithFiles(files, instruction);
-            log.info("Чат с проектом завершён: chatId={}", result.chatId());
+            ProjectService.ChatResult result = projectService.chatWithFiles(primaryFile,
+                    contextFiles != null ? contextFiles : List.of(),
+                    instruction, templateCode != null ? templateCode : "200");
+            log.info("Генерация завершена: chatId={}", result.chatId());
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            log.error("Ошибка чата с проектом: {}", e.getMessage(), e);
+            log.error("Ошибка генерации: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }

@@ -9,10 +9,13 @@ import com.localdoc.entity.ChatEntity;
 import com.localdoc.repository.TemplateRepository;
 import com.localdoc.service.ChatSessionManager;
 import com.localdoc.service.DocumentationService;
+import com.localdoc.service.ExportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,6 +30,7 @@ public class DocumentationController {
     final DocumentationService docService;
     final ChatSessionManager sessionManager;
     final TemplateRepository templateRepository;
+    final ExportService exportService;
 
     @PostMapping("/chat")
     public ResponseEntity<CreateChatResponse> createChat(@RequestBody CreateChatRequest request) {
@@ -115,6 +119,58 @@ public class DocumentationController {
         DocumentationResponse response = new DocumentationResponse(
                 versions.get(index), null, chatId.toString(), index, versions);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/export/{chatId}/{versionIndex}")
+    public ResponseEntity<byte[]> export(
+            @PathVariable UUID chatId,
+            @PathVariable int versionIndex,
+            @RequestParam(defaultValue = "html") String format) {
+        List<String> versions = sessionManager.getAssistantMessages(chatId);
+        if (versionIndex < 0 || versionIndex >= versions.size()) {
+            return ResponseEntity.notFound().build();
+        }
+        String xhtml = versions.get(versionIndex);
+        if (xhtml == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            byte[] data;
+            String ext;
+            MediaType mediaType;
+
+            switch (format) {
+                case "pdf":
+                    data = exportService.exportPdf(xhtml);
+                    ext = "pdf";
+                    mediaType = MediaType.APPLICATION_PDF;
+                    break;
+                case "docx":
+                    data = exportService.exportDocx(xhtml);
+                    ext = "docx";
+                    mediaType = MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+                    break;
+                case "md":
+                case "markdown":
+                    data = exportService.exportMarkdown(xhtml);
+                    ext = "md";
+                    mediaType = MediaType.parseMediaType("text/markdown");
+                    break;
+                default:
+                    data = exportService.exportHtml(xhtml);
+                    ext = "html";
+                    mediaType = MediaType.TEXT_HTML;
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(mediaType);
+            headers.setContentDispositionFormData("attachment", "documentation." + ext);
+            return ResponseEntity.ok().headers(headers).body(data);
+        } catch (Exception e) {
+            log.error("Ошибка экспорта: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     @GetMapping("/templates")
