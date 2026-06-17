@@ -48,6 +48,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const stopBtn = document.getElementById('stopBtn');
     const modeModal = document.getElementById('modeModal');
     const modalCloseBtn = document.getElementById('modalCloseBtn');
+    const templateParams = document.getElementById('templateParams');
+    const algorithmCodeInput = document.getElementById('algorithmCode');
+    const authoritiesInput = document.getElementById('authorities');
+    const slaP95Input = document.getElementById('slaP95');
+    const slaP99Input = document.getElementById('slaP99');
 
     if (modalCloseBtn) {
         modalCloseBtn.addEventListener('click', () => modeModal.classList.add('hidden'));
@@ -83,6 +88,12 @@ document.addEventListener('DOMContentLoaded', () => {
         setTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
     });
 
+    function updateTemplateParams() {
+        const code = templateSelect.value;
+        templateParams.classList.toggle('hidden', code !== '211');
+    }
+    templateSelect.addEventListener('change', updateTemplateParams);
+
     function saveState() {
         const state = {
             chats: chats.map(c => ({
@@ -91,6 +102,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 mode: c.mode || 'simple',
                 sourceCode: c.sourceCode,
                 templateCode: c.templateCode,
+                algorithmCode: c.algorithmCode,
+                authorities: c.authorities,
+                slaP95: c.slaP95,
+                slaP99: c.slaP99,
                 versions: c.versions,
                 currentVersion: c.currentVersion
             })),
@@ -207,6 +222,10 @@ document.addEventListener('DOMContentLoaded', () => {
             mode: data.mode || 'simple',
             sourceCode: '',
             templateCode: '200',
+            algorithmCode: '',
+            authorities: '',
+            slaP95: '',
+            slaP99: '',
             versions: [],
             currentVersion: -1
         };
@@ -222,12 +241,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (prev) {
             prev.sourceCode = sourceCodeEl.value;
             prev.templateCode = templateSelect.value;
+            prev.algorithmCode = algorithmCodeInput.value;
+            prev.authorities = authoritiesInput.value;
+            prev.slaP95 = slaP95Input.value;
+            prev.slaP99 = slaP99Input.value;
         }
         activeChatId = id;
         const chat = getActiveChat();
         if (!chat) return;
         sourceCodeEl.value = chat.sourceCode || '';
         templateSelect.value = chat.templateCode || '200';
+        algorithmCodeInput.value = chat.algorithmCode || '';
+        authoritiesInput.value = chat.authorities || '';
+        slaP95Input.value = chat.slaP95 || '';
+        slaP99Input.value = chat.slaP99 || '';
+        updateTemplateParams();
         versions = chat.versions || [];
         const targetTab = chat.mode === 'project' ? 'project' : 'simple';
         document.querySelector('.tabs').classList.toggle('hidden', true);
@@ -494,6 +522,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (chat) {
             chat.sourceCode = sourceCodeEl.value;
             chat.templateCode = templateSelect.value;
+            chat.algorithmCode = algorithmCodeInput.value;
+            chat.authorities = authoritiesInput.value;
+            chat.slaP95 = slaP95Input.value;
+            chat.slaP99 = slaP99Input.value;
             chat.versions = versions;
             chat.currentVersion = idx;
             saveState();
@@ -562,6 +594,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const sourceCode = sourceCodeEl.value.trim();
         const templateCode = templateSelect.value;
         if (!sourceCode) { showStatus('Введите исходный код', 'error'); return; }
+        const algorithmCode = algorithmCodeInput.value.trim();
+        const authorities = authoritiesInput.value.trim();
+        const slaP95 = slaP95Input.value.trim();
+        const slaP99 = slaP99Input.value.trim();
 
         _submitting = true;
         setInputsDisabled(true);
@@ -579,7 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/docs/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chatId: chat.id, sourceCode, templateCode }),
+                body: JSON.stringify({ chatId: chat.id, sourceCode, templateCode, algorithmCode, authorities, slaP95, slaP99 }),
                 signal: abortController.signal
             });
             if (response.ok) {
@@ -589,6 +625,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (originChat) {
                     originChat.sourceCode = sourceCode;
                     originChat.templateCode = templateCode;
+                    originChat.algorithmCode = algorithmCode;
+                    originChat.authorities = authorities;
+                    originChat.slaP95 = slaP95;
+                    originChat.slaP99 = slaP99;
                     originChat.versions = data.versions || [];
                     originChat.currentVersion = data.versionIndex;
                 }
@@ -768,6 +808,10 @@ document.addEventListener('DOMContentLoaded', () => {
             hideStatus();
             const originChat = chats.find(c => c.id === originChatId);
             if (originChat) {
+                originChat.algorithmCode = algorithmCodeInput.value;
+                originChat.authorities = authoritiesInput.value;
+                originChat.slaP95 = slaP95Input.value;
+                originChat.slaP99 = slaP99Input.value;
                 originChat.versions = data.versions || [];
                 originChat.currentVersion = data.versionIndex;
             }

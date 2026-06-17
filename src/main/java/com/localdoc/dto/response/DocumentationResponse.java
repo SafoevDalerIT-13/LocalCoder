@@ -15,4 +15,8 @@ public class DocumentationResponse {
     private String sessionId;
     private int versionIndex;
     private List<String> versions;
+    private String algorithmCode;
+    private String authorities;
+    private String slaP95;
+    private String slaP99;
 }

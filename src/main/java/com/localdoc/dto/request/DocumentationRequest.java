@@ -14,4 +14,8 @@ public class DocumentationRequest {
     private String sourceCode;
     private String templateCode;
     private String name;
+    private String algorithmCode;
+    private String authorities;
+    private String slaP95;
+    private String slaP99;
 }
