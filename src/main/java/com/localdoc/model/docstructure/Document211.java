@@ -15,6 +15,7 @@ public class Document211 {
     private String methodName;
     private String description;
     private String algorithmCode;
+    private String algorithmLink;
     private String authorities;
     private String slaP95;
     private String slaP99;

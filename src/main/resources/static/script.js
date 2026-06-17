@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalCloseBtn = document.getElementById('modalCloseBtn');
     const templateParams = document.getElementById('templateParams');
     const algorithmCodeInput = document.getElementById('algorithmCode');
+    const algorithmLinkInput = document.getElementById('algorithmLink');
     const authoritiesInput = document.getElementById('authorities');
     const slaP95Input = document.getElementById('slaP95');
     const slaP99Input = document.getElementById('slaP99');
@@ -103,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 sourceCode: c.sourceCode,
                 templateCode: c.templateCode,
                 algorithmCode: c.algorithmCode,
+                algorithmLink: c.algorithmLink,
                 authorities: c.authorities,
                 slaP95: c.slaP95,
                 slaP99: c.slaP99,
@@ -223,6 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sourceCode: '',
             templateCode: '200',
             algorithmCode: '',
+            algorithmLink: '',
             authorities: '',
             slaP95: '',
             slaP99: '',
@@ -242,6 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
             prev.sourceCode = sourceCodeEl.value;
             prev.templateCode = templateSelect.value;
             prev.algorithmCode = algorithmCodeInput.value;
+            prev.algorithmLink = algorithmLinkInput.value;
             prev.authorities = authoritiesInput.value;
             prev.slaP95 = slaP95Input.value;
             prev.slaP99 = slaP99Input.value;
@@ -252,6 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sourceCodeEl.value = chat.sourceCode || '';
         templateSelect.value = chat.templateCode || '200';
         algorithmCodeInput.value = chat.algorithmCode || '';
+        algorithmLinkInput.value = chat.algorithmLink || '';
         authoritiesInput.value = chat.authorities || '';
         slaP95Input.value = chat.slaP95 || '';
         slaP99Input.value = chat.slaP99 || '';
@@ -523,6 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
             chat.sourceCode = sourceCodeEl.value;
             chat.templateCode = templateSelect.value;
             chat.algorithmCode = algorithmCodeInput.value;
+            chat.algorithmLink = algorithmLinkInput.value;
             chat.authorities = authoritiesInput.value;
             chat.slaP95 = slaP95Input.value;
             chat.slaP99 = slaP99Input.value;
@@ -595,6 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const templateCode = templateSelect.value;
         if (!sourceCode) { showStatus('Введите исходный код', 'error'); return; }
         const algorithmCode = algorithmCodeInput.value.trim();
+        const algorithmLink = algorithmLinkInput.value.trim();
         const authorities = authoritiesInput.value.trim();
         const slaP95 = slaP95Input.value.trim();
         const slaP99 = slaP99Input.value.trim();
@@ -615,7 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/docs/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chatId: chat.id, sourceCode, templateCode, algorithmCode, authorities, slaP95, slaP99 }),
+                body: JSON.stringify({ chatId: chat.id, sourceCode, templateCode, algorithmCode, algorithmLink, authorities, slaP95, slaP99 }),
                 signal: abortController.signal
             });
             if (response.ok) {
@@ -626,6 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     originChat.sourceCode = sourceCode;
                     originChat.templateCode = templateCode;
                     originChat.algorithmCode = algorithmCode;
+                    originChat.algorithmLink = algorithmLink;
                     originChat.authorities = authorities;
                     originChat.slaP95 = slaP95;
                     originChat.slaP99 = slaP99;
@@ -809,6 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const originChat = chats.find(c => c.id === originChatId);
             if (originChat) {
                 originChat.algorithmCode = algorithmCodeInput.value;
+                originChat.algorithmLink = algorithmLinkInput.value;
                 originChat.authorities = authoritiesInput.value;
                 originChat.slaP95 = slaP95Input.value;
                 originChat.slaP99 = slaP99Input.value;

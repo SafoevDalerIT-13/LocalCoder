@@ -18,7 +18,7 @@ public class XhtmlRenderService {
         appendRow(sb, "Наименование метода", esc(doc.getMethodName()));
         appendRow(sb, "Описание метода", esc(doc.getDescription()));
         appendRow(sb, "Алгоритм выполнения",
-                "<a href=\"/api/docs/algorithm/" + esc(doc.getAlgorithmCode()) + "\">" + esc(doc.getAlgorithmCode()) + "</a>");
+                "<a href=\"" + esc(doc.getAlgorithmLink()) + "\">" + esc(doc.getAlgorithmCode()) + "</a>");
         appendRow(sb, "Полномочия", esc(doc.getAuthorities()));
         appendRow(sb, "SLA p95", esc(doc.getSlaP95()));
         appendRow(sb, "SLA p99", esc(doc.getSlaP99()));

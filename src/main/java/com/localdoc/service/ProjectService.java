@@ -64,7 +64,7 @@ public class ProjectService {
             ChatEntity chat = sessionManager.createChat(fileName, "project");
             UUID chatId = chat.getId();
 
-            String doc = documentationService.generateDocumentation(chatId, content, templateCode, null, null, null, null);
+            String doc = documentationService.generateDocumentation(chatId, content, templateCode, null, null, null, null, null);
 
             sessionManager.addMessage(chatId, new UserMessage("Файл: " + filePath));
             if (doc != null) {
