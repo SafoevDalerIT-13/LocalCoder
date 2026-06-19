@@ -30,7 +30,8 @@ public class DocumentationService {
     final ObjectMapper objectMapper;
 
     public String generateDocumentation(UUID chatId, String sourceCode, String templateCode, String algorithmCode,
-                                         String algorithmLink, String authorities, String slaP95, String slaP99) {
+                                         String algorithmDescription, String algorithmLink,
+                                         String authorities, String slaP95, String slaP99) {
         if (sourceCode == null || sourceCode.isBlank()) {
             log.warn("Исходный код пуст или null");
             throw new InvalidRequestException("Исходный код не может быть пустым");
@@ -41,20 +42,20 @@ public class DocumentationService {
         }
 
         if ("211".equals(templateCode)) {
-            return generate211(chatId, sourceCode, algorithmCode, algorithmLink, authorities, slaP95, slaP99);
+            return generate211(chatId, sourceCode, algorithmCode, algorithmDescription, algorithmLink, authorities, slaP95, slaP99);
         }
 
         return generateLegacy(chatId, sourceCode, templateCode, algorithmCode, authorities, slaP95, slaP99);
     }
 
     private String generate211(UUID chatId, String sourceCode,
-                                String algorithmCode, String algorithmLink,
+                                String algorithmCode, String algorithmDescription, String algorithmLink,
                                 String authorities, String slaP95, String slaP99) {
         log.info("Генерация 211: AI → JSON → XHTML");
 
         try {
             String json = callLlmForJson(sourceCode, algorithmCode, authorities, slaP95, slaP99);
-            Document211 doc = parseDocumentFromJson(json, algorithmCode, algorithmLink, authorities, slaP95, slaP99);
+            Document211 doc = parseDocumentFromJson(json, algorithmCode, algorithmDescription, algorithmLink, authorities, slaP95, slaP99);
             String xhtml = xhtmlRenderService.render211(doc);
             log.info("Сгенерирован XHTML через JSON (211): длина={}", xhtml.length());
             return xhtml;
@@ -125,7 +126,7 @@ public class DocumentationService {
 
     @SuppressWarnings("unchecked")
     private Document211 parseDocumentFromJson(String json,
-                                               String algorithmCode, String algorithmLink,
+                                               String algorithmCode, String algorithmDescription, String algorithmLink,
                                                String authorities,
                                                String slaP95, String slaP99) throws Exception {
         if (json == null || json.isBlank()) {
@@ -158,6 +159,7 @@ public class DocumentationService {
                 .methodName(methodName)
                 .description(description)
                 .algorithmCode(algorithmCode)
+                .algorithmDescription(algorithmDescription)
                 .algorithmLink(algorithmLink)
                 .authorities(authorities)
                 .slaP95(slaP95)

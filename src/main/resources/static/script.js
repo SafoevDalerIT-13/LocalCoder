@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalCloseBtn = document.getElementById('modalCloseBtn');
     const templateParams = document.getElementById('templateParams');
     const algorithmCodeInput = document.getElementById('algorithmCode');
+    const algorithmDescriptionInput = document.getElementById('algorithmDescription');
     const algorithmLinkInput = document.getElementById('algorithmLink');
     const authoritiesInput = document.getElementById('authorities');
     const slaP95Input = document.getElementById('slaP95');
@@ -104,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 sourceCode: c.sourceCode,
                 templateCode: c.templateCode,
                 algorithmCode: c.algorithmCode,
+                algorithmDescription: c.algorithmDescription,
                 algorithmLink: c.algorithmLink,
                 authorities: c.authorities,
                 slaP95: c.slaP95,
@@ -223,8 +225,9 @@ document.addEventListener('DOMContentLoaded', () => {
             name: data.name,
             mode: data.mode || 'simple',
             sourceCode: '',
-            templateCode: '200',
+            templateCode: '230',
             algorithmCode: '',
+            algorithmDescription: '',
             algorithmLink: '',
             authorities: '',
             slaP95: '',
@@ -245,6 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             prev.sourceCode = sourceCodeEl.value;
             prev.templateCode = templateSelect.value;
             prev.algorithmCode = algorithmCodeInput.value;
+            prev.algorithmDescription = algorithmDescriptionInput.value;
             prev.algorithmLink = algorithmLinkInput.value;
             prev.authorities = authoritiesInput.value;
             prev.slaP95 = slaP95Input.value;
@@ -254,8 +258,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const chat = getActiveChat();
         if (!chat) return;
         sourceCodeEl.value = chat.sourceCode || '';
-        templateSelect.value = chat.templateCode || '200';
+        templateSelect.value = chat.templateCode || '230';
         algorithmCodeInput.value = chat.algorithmCode || '';
+        algorithmDescriptionInput.value = chat.algorithmDescription || '';
         algorithmLinkInput.value = chat.algorithmLink || '';
         authoritiesInput.value = chat.authorities || '';
         slaP95Input.value = chat.slaP95 || '';
@@ -494,12 +499,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showStatus(message, type = 'info') {
         statusDiv.innerHTML = '';
-        const dot = document.createElement('span');
-        dot.className = 'dot-pulse';
-        statusDiv.appendChild(dot);
+        if (type === 'error') {
+            const icon = document.createElement('span');
+            icon.className = 'material-symbols-outlined';
+            icon.textContent = 'warning';
+            icon.style.fontSize = '1.2rem';
+            statusDiv.appendChild(icon);
+        } else {
+            const dot = document.createElement('span');
+            dot.className = 'dot-pulse';
+            statusDiv.appendChild(dot);
+        }
         statusDiv.appendChild(document.createTextNode(message));
         statusDiv.className = `status ${type}`;
         statusDiv.classList.remove('hidden');
+        if (type === 'error') {
+            setTimeout(() => statusDiv.classList.add('hidden'), 4000);
+        }
     }
 
     function hideStatus() {
@@ -528,6 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
             chat.sourceCode = sourceCodeEl.value;
             chat.templateCode = templateSelect.value;
             chat.algorithmCode = algorithmCodeInput.value;
+            chat.algorithmDescription = algorithmDescriptionInput.value;
             chat.algorithmLink = algorithmLinkInput.value;
             chat.authorities = authoritiesInput.value;
             chat.slaP95 = slaP95Input.value;
@@ -599,8 +616,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (_submitting) return;
         const sourceCode = sourceCodeEl.value.trim();
         const templateCode = templateSelect.value;
-        if (!sourceCode) { showStatus('Введите исходный код', 'error'); return; }
+        if (!sourceCode) {
+            showStatus('Пожалуйста, введите исходный код', 'error');
+            sourceCodeEl.classList.add('shake');
+            setTimeout(() => sourceCodeEl.classList.remove('shake'), 500);
+            return;
+        }
         const algorithmCode = algorithmCodeInput.value.trim();
+        const algorithmDescription = algorithmDescriptionInput.value.trim();
         const algorithmLink = algorithmLinkInput.value.trim();
         const authorities = authoritiesInput.value.trim();
         const slaP95 = slaP95Input.value.trim();
@@ -622,7 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/docs/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chatId: chat.id, sourceCode, templateCode, algorithmCode, algorithmLink, authorities, slaP95, slaP99 }),
+                body: JSON.stringify({ chatId: chat.id, sourceCode, templateCode, algorithmCode, algorithmDescription, algorithmLink, authorities, slaP95, slaP99 }),
                 signal: abortController.signal
             });
             if (response.ok) {
@@ -633,6 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     originChat.sourceCode = sourceCode;
                     originChat.templateCode = templateCode;
                     originChat.algorithmCode = algorithmCode;
+                    originChat.algorithmDescription = algorithmDescription;
                     originChat.algorithmLink = algorithmLink;
                     originChat.authorities = authorities;
                     originChat.slaP95 = slaP95;
@@ -817,6 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const originChat = chats.find(c => c.id === originChatId);
             if (originChat) {
                 originChat.algorithmCode = algorithmCodeInput.value;
+                originChat.algorithmDescription = algorithmDescriptionInput.value;
                 originChat.algorithmLink = algorithmLinkInput.value;
                 originChat.authorities = authoritiesInput.value;
                 originChat.slaP95 = slaP95Input.value;
@@ -862,7 +887,7 @@ document.addEventListener('DOMContentLoaded', () => {
             code { padding: 0.1rem 0.3rem; font-size: 0.85rem; }
             p { margin: 0.5rem 0; }
             ac\\:structured-macro, ac\\:parameter, ac\\:plain-text-body { display: none; }
-        </style></head><body>${html}</body></html>`;
+        </style><script>document.addEventListener('click',function(e){var t=e.target.closest('a');if(t&&t.getAttribute('href').startsWith('#')){e.preventDefault();var id=t.getAttribute('href').slice(1),el=document.getElementById(id);if(el)el.scrollIntoView()}})<\/script></head><body>${html}</body></html>`;
         previewFrame.srcdoc = styled;
     }
 

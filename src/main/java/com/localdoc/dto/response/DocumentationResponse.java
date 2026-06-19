@@ -16,6 +16,7 @@ public class DocumentationResponse {
     private int versionIndex;
     private List<String> versions;
     private String algorithmCode;
+    private String algorithmDescription;
     private String algorithmLink;
     private String authorities;
     private String slaP95;

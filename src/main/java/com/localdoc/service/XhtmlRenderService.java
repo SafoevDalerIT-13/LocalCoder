@@ -11,20 +11,33 @@ public class XhtmlRenderService {
     public String render211(Document211 doc) {
         StringBuilder sb = new StringBuilder();
 
-        sb.append("<h1>").append(esc(doc.getMethodName())).append("</h1>\n\n");
+        String methodTitle = doc.getMethodName()
+                + (doc.getAlgorithmDescription() != null && !doc.getAlgorithmDescription().isBlank()
+                        ? " - " + doc.getAlgorithmDescription() : "");
+        sb.append("<h1>").append(esc(methodTitle)).append("</h1>\n\n");
 
-        sb.append("<h2>Общие сведения</h2>\n");
+        sb.append("<ul style=\"font-size:8pt\">\n");
+        sb.append("  <li><a href=\"#overview\">Общие сведения</a></li>\n");
+        sb.append("  <li><a href=\"#input\">Входные параметры метода</a></li>\n");
+        sb.append("  <li><a href=\"#output\">Выходные параметры метода</a></li>\n");
+        sb.append("  <li><a href=\"#errors\">Список возможных ошибок</a></li>\n");
+        sb.append("</ul>\n\n");
+
+        sb.append("<h2 id=\"overview\">Общие сведения</h2>\n");
         sb.append("<table>\n");
         appendRow(sb, "Наименование метода", esc(doc.getMethodName()));
         appendRow(sb, "Описание метода", esc(doc.getDescription()));
-        appendRow(sb, "Алгоритм выполнения",
-                "<a href=\"" + esc(doc.getAlgorithmLink()) + "\">" + esc(doc.getAlgorithmCode()) + "</a>");
+        String algValue = esc(doc.getAlgorithmCode() + " - " + doc.getAlgorithmDescription());
+        if (doc.getAlgorithmLink() != null && !doc.getAlgorithmLink().isBlank()) {
+            algValue = "<a href=\"" + esc(doc.getAlgorithmLink()) + "\">" + algValue + "</a>";
+        }
+        appendRow(sb, "Алгоритм выполнения", algValue);
         appendRow(sb, "Полномочия", esc(doc.getAuthorities()));
         appendRow(sb, "SLA p95", esc(doc.getSlaP95()));
         appendRow(sb, "SLA p99", esc(doc.getSlaP99()));
         sb.append("</table>\n\n");
 
-        sb.append("<h2>Входные параметры метода</h2>\n");
+        sb.append("<h2 id=\"input\">Входные параметры метода</h2>\n");
         sb.append("<p>Содержит описание формата входных данных в виде таблицы</p>\n");
         sb.append("<table>\n");
         sb.append("  <tr>\n");
@@ -45,7 +58,7 @@ public class XhtmlRenderService {
         }
         sb.append("</table>\n\n");
 
-        sb.append("<h2>Выходные параметры метода</h2>\n");
+        sb.append("<h2 id=\"output\">Выходные параметры метода</h2>\n");
         sb.append("<p>Содержит описание формата выходных данных в виде таблицы:</p>\n");
         sb.append("<table>\n");
         sb.append("  <tr>\n");
@@ -66,7 +79,7 @@ public class XhtmlRenderService {
         }
         sb.append("</table>\n\n");
 
-        sb.append("<h2>Список возможных ошибок</h2>\n");
+        sb.append("<h2 id=\"errors\">Список возможных ошибок</h2>\n");
         sb.append("<table>\n");
         sb.append("  <tr><th>Код ошибки</th><th>Текст ошибки</th></tr>\n");
         for (ErrorInfo e : doc.getErrors()) {

@@ -64,7 +64,8 @@ public class DocumentationController {
         long startTime = System.currentTimeMillis();
         String documentation = docService.generateDocumentation(
                 chatId, request.getSourceCode(), request.getTemplateCode(),
-                request.getAlgorithmCode(), request.getAlgorithmLink(),
+                request.getAlgorithmCode(), request.getAlgorithmDescription(),
+                request.getAlgorithmLink(),
                 request.getAuthorities(), request.getSlaP95(), request.getSlaP99()
         );
         long durationMs = System.currentTimeMillis() - startTime;
@@ -83,8 +84,8 @@ public class DocumentationController {
         DocumentationResponse response = new DocumentationResponse(
                 documentation, request.getTemplateCode(), chatId.toString(),
                 versions.size() - 1, versions, request.getAlgorithmCode(),
-                request.getAlgorithmLink(), request.getAuthorities(),
-                request.getSlaP95(), request.getSlaP99());
+                request.getAlgorithmDescription(), request.getAlgorithmLink(),
+                request.getAuthorities(), request.getSlaP95(), request.getSlaP99());
         return ResponseEntity.ok(response);
     }
 
@@ -104,7 +105,7 @@ public class DocumentationController {
 
         DocumentationResponse response = new DocumentationResponse(
                 corrected, null, chatId.toString(),
-                versions.size() - 1, versions, null, null, null, null, null);
+                versions.size() - 1, versions, null, null, null, null, null, null);
         return ResponseEntity.ok(response);
     }
 
@@ -121,7 +122,7 @@ public class DocumentationController {
             return ResponseEntity.notFound().build();
         }
         DocumentationResponse response = new DocumentationResponse(
-                versions.get(index), null, chatId.toString(), index, versions, null, null, null, null, null);
+                versions.get(index), null, chatId.toString(), index, versions, null, null, null, null, null, null);
         return ResponseEntity.ok(response);
     }
 

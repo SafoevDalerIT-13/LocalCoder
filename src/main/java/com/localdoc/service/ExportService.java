@@ -14,16 +14,16 @@ public class ExportService {
 
     public byte[] exportHtml(String xhtml) {
         String full = "<!DOCTYPE html>\n<html lang=\"ru\">\n<head>\n<meta charset=\"UTF-8\"/>\n<title>Documentation</title>\n<style>\n" +
-                "body { font-family: 'Segoe UI', Arial, sans-serif; padding: 2rem; color: #1f2937; line-height: 1.6; max-width: 900px; margin: 0 auto; }\n" +
+                "body { font-family: 'Noto Sans', 'Segoe UI', Arial, sans-serif; padding: 2rem; color: #1f2937; line-height: 1.6; max-width: 1200px; margin: 0 auto; }\n" +
                 "h1 { font-size: 1.6rem; margin: 0 0 0.75rem; color: #111827; }\n" +
                 "h2 { font-size: 1.3rem; margin: 1rem 0 0.5rem; color: #1f2937; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3rem; }\n" +
                 "h3 { font-size: 1.1rem; margin: 0.75rem 0 0.4rem; color: #374151; }\n" +
-                "table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; }\n" +
-                "th, td { border: 1px solid #d1d5db; padding: 0.4rem 0.6rem; text-align: left; font-size: 0.9rem; }\n" +
+                "table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; table-layout: fixed; }\n" +
+                "th, td { border: 1px solid #d1d5db; padding: 0.4rem 0.6rem; text-align: left; font-size: 0.9rem; word-wrap: break-word; overflow-wrap: break-word; }\n" +
                 "th { background: #f3f4f6; font-weight: 600; }\n" +
                 "ol, ul { padding-left: 1.5rem; margin: 0.5rem 0; }\n" +
                 "code, pre { font-family: 'Courier New', monospace; background: #f1f5f9; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.85rem; }\n" +
-                "pre { padding: 0.75rem; overflow-x: auto; }\n" +
+                "pre { padding: 0.75rem; white-space: pre-wrap; word-break: break-word; }\n" +
                 "</style>\n</head>\n<body>\n" + stripConfluenceMacros(xhtml) + "\n</body>\n</html>";
         return full.getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
@@ -39,7 +39,8 @@ public class ExportService {
         PdfRendererBuilder builder = new PdfRendererBuilder();
         byte[] fontBytes = readFontBytes();
         if (fontBytes != null) {
-            builder.useFont(() -> new java.io.ByteArrayInputStream(fontBytes), "DejaVu Sans");
+            builder.useFont(() -> new java.io.ByteArrayInputStream(fontBytes), "Noto Sans");
+            builder.useFont(() -> new java.io.ByteArrayInputStream(fontBytes), "Segoe UI");
             builder.useFont(() -> new java.io.ByteArrayInputStream(fontBytes), "Arial");
             builder.useFont(() -> new java.io.ByteArrayInputStream(fontBytes), "sans-serif");
         }
@@ -50,7 +51,7 @@ public class ExportService {
     }
 
     private byte[] readFontBytes() {
-        try (var fontStream = getClass().getClassLoader().getResourceAsStream("fonts/DejaVuSans.ttf")) {
+        try (var fontStream = getClass().getClassLoader().getResourceAsStream("fonts/NotoSans-Regular.ttf")) {
             if (fontStream == null) return null;
             return fontStream.readAllBytes();
         } catch (Exception e) {
@@ -87,6 +88,7 @@ public class ExportService {
                     for (int ci = 0; ci < cells.size() && ci < colCount; ci++) {
                         XWPFTableCell cell = table.getRow(ri).getCell(ci);
                         cell.setText(cells.get(ci).text());
+                        cell.getCTTc().addNewTcPr().addNewTcW().setW(java.math.BigInteger.valueOf(5000));
                         if (ri == 0) {
                             cell.getCTTc().addNewTcPr().addNewShd().setFill("D9E2F3");
                         }
