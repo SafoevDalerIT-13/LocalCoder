@@ -6,7 +6,9 @@ import com.localdoc.entity.ChatEntity;
 import com.localdoc.exception.DocumentationGenerationException;
 import com.localdoc.exception.InvalidRequestException;
 import com.localdoc.exception.TemplateNotFoundException;
+import com.localdoc.model.docstructure.AlgorithmStep;
 import com.localdoc.model.docstructure.Document211;
+import com.localdoc.model.docstructure.Document230;
 import com.localdoc.model.docstructure.ErrorInfo;
 import com.localdoc.model.docstructure.FieldInfo;
 import com.localdoc.repository.TemplateRepository;
@@ -45,6 +47,10 @@ public class DocumentationService {
             return generate211(chatId, sourceCode, algorithmCode, algorithmDescription, algorithmLink, authorities, slaP95, slaP99);
         }
 
+        if ("230".equals(templateCode)) {
+            return generate230(chatId, sourceCode, algorithmCode, algorithmDescription, algorithmLink);
+        }
+
         return generateLegacy(chatId, sourceCode, templateCode, algorithmCode, authorities, slaP95, slaP99);
     }
 
@@ -64,6 +70,114 @@ public class DocumentationService {
         }
 
         return generateLegacyFallback(sourceCode, algorithmCode, authorities, slaP95, slaP99);
+    }
+
+    private String generate230(UUID chatId, String sourceCode,
+                                String algorithmCode, String algorithmDescription, String algorithmLink) {
+        log.info("Генерация 230: AI → JSON → XHTML");
+
+        try {
+            String json = callLlmFor230Json(sourceCode);
+            Document230 doc = parseDocument230FromJson(json, algorithmCode, algorithmDescription, algorithmLink);
+            String xhtml = xhtmlRenderService.render230(doc);
+            log.info("Сгенерирован XHTML через JSON (230): длина={}", xhtml.length());
+            return xhtml;
+        } catch (Exception e) {
+            log.warn("JSON-подход 230 не сработал, падаем на Legacy: {}", e.getMessage());
+        }
+
+        return generateLegacy(chatId, sourceCode, "230", algorithmCode, null, null, null);
+    }
+
+    private String callLlmFor230Json(String sourceCode) {
+        String systemPrompt = """
+                Ты — технический писатель, анализирующий Java-код.
+                Проанализируй код и верни ТОЛЬКО валидный JSON.
+                Никаких markdown-обрамлений, пояснений или XHTML.
+
+                ПРАВИЛА:
+                1. Найди главный публичный метод — это документируемый метод.
+                2. Входные/выходные параметры — краткое описание.
+                3. Ожидаемый результат — что делает метод.
+                4. Шаги алгоритма — детальное пошаговое описание.
+                   Первый шаг всегда заголовок основного сценария: {"number": "ОС.", "action": "название основного сценария"}.
+                   Далее идут шаги с номерами 1, 2, 3... с полями: number, action, as (значение столбца АС, "—" если нет).
+                   Если в коде есть обработка ошибок — добавь альтернативный сценарий:
+                   {"number": "АС1.", "action": "Непредвиденная ошибка"} с подшагами 1, 2...
+                5. Поле "as" — указывает на альтернативный сценарий (например "АС1"), или "—" если нет.
+
+                JSON СТРУКТУРА ОТВЕТА (строго соблюдай):
+                {
+                  "methodName": "имя_метода",
+                  "inputParamsDescription": "описание входных параметров",
+                  "outputParamsDescription": "описание выходных параметров",
+                  "expectedResult": "описание ожидаемого результата",
+                  "steps": [
+                    {"number": "ОС.", "action": "Название основного сценария"},
+                    {"number": "1", "action": "текст действия", "as": "—"},
+                    {"number": "2", "action": "текст действия", "as": "—"},
+                    {"number": "АС1.", "action": "Название альтернативного сценария"},
+                    {"number": "1", "action": "текст действия", "as": "—"}
+                  ]
+                }
+
+                ВАЖНО: Верни ТОЛЬКО JSON.""";
+        String userContent = "КОД:\n" + sourceCode;
+
+        List<Message> messages = new ArrayList<>();
+        messages.add(new SystemMessage(systemPrompt));
+        messages.add(new UserMessage(userContent));
+
+        String result = chatClient.prompt(new Prompt(messages))
+                .call()
+                .content();
+
+        if (result != null) {
+            result = result.replaceAll("(?s)^```[a-zA-Z]*\\s*", "").replaceAll("(?s)```\\s*$", "").trim();
+        }
+        log.debug("Ответ AI JSON (230): длина={}", result != null ? result.length() : 0);
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Document230 parseDocument230FromJson(String json,
+                                                  String algorithmCode, String algorithmDescription, String algorithmLink) throws Exception {
+        if (json == null || json.isBlank()) {
+            throw new DocumentationGenerationException("Пустой JSON от AI");
+        }
+
+        Map<String, Object> root = objectMapper.readValue(json,
+                new TypeReference<Map<String, Object>>() {});
+
+        String methodName = String.valueOf(root.getOrDefault("methodName", "Unknown"));
+        String inputParamsDesc = String.valueOf(root.getOrDefault("inputParamsDescription", ""));
+        String outputParamsDesc = String.valueOf(root.getOrDefault("outputParamsDescription", ""));
+        String expectedResult = String.valueOf(root.getOrDefault("expectedResult", ""));
+
+        List<AlgorithmStep> steps = new ArrayList<>();
+        if (root.get("steps") instanceof List) {
+            for (Object item : (List<?>) root.get("steps")) {
+                if (item instanceof Map) {
+                    Map<String, Object> m = (Map<String, Object>) item;
+                    steps.add(AlgorithmStep.builder()
+                            .number(String.valueOf(m.getOrDefault("number", "")))
+                            .action(String.valueOf(m.getOrDefault("action", "")))
+                            .as(String.valueOf(m.getOrDefault("as", "\u2014")))
+                            .build());
+                }
+            }
+        }
+
+        return Document230.builder()
+                .methodName(methodName)
+                .algorithmCode(algorithmCode)
+                .algorithmDescription(algorithmDescription)
+                .algorithmLink(algorithmLink)
+                .inputParamsDescription(inputParamsDesc)
+                .outputParamsDescription(outputParamsDesc)
+                .expectedResult(expectedResult)
+                .steps(steps)
+                .build();
     }
 
     private String callLlmForJson(String sourceCode,

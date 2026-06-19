@@ -1,6 +1,8 @@
 package com.localdoc.service;
 
+import com.localdoc.model.docstructure.AlgorithmStep;
 import com.localdoc.model.docstructure.Document211;
+import com.localdoc.model.docstructure.Document230;
 import com.localdoc.model.docstructure.ErrorInfo;
 import com.localdoc.model.docstructure.FieldInfo;
 import org.springframework.stereotype.Service;
@@ -84,6 +86,53 @@ public class XhtmlRenderService {
         sb.append("  <tr><th>Код ошибки</th><th>Текст ошибки</th></tr>\n");
         for (ErrorInfo e : doc.getErrors()) {
             sb.append("  <tr><td>").append(esc(e.getCode())).append("</td><td>").append(esc(e.getText())).append("</td></tr>\n");
+        }
+        sb.append("</table>\n");
+
+        return sb.toString();
+    }
+
+    public String render230(Document230 doc) {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("<h1>").append(esc(doc.getAlgorithmCode()))
+                .append(" - ").append(esc(doc.getAlgorithmDescription())).append("</h1>\n\n");
+
+        sb.append("<ul style=\"font-size:8pt\">\n");
+        sb.append("  <li><a href=\"#overview\">Общие сведения</a></li>\n");
+        sb.append("  <li><a href=\"#algorithm\">Описание алгоритма</a></li>\n");
+        sb.append("</ul>\n\n");
+
+        sb.append("<h2 id=\"overview\">Общие сведения</h2>\n");
+        sb.append("<table>\n");
+        String algValue = esc(doc.getAlgorithmCode() + " - " + doc.getAlgorithmDescription());
+        if (doc.getAlgorithmLink() != null && !doc.getAlgorithmLink().isBlank()) {
+            algValue = "<a href=\"" + esc(doc.getAlgorithmLink()) + "\">" + algValue + "</a>";
+        }
+        appendRow(sb, "Наименование алгоритма", algValue);
+        appendRow(sb, "Наименование метода", esc(doc.getMethodName()));
+        appendRow(sb, "Входные параметры", esc(doc.getInputParamsDescription()));
+        appendRow(sb, "Выходные параметры", esc(doc.getOutputParamsDescription()));
+        appendRow(sb, "Ожидаемый результат", esc(doc.getExpectedResult()));
+        sb.append("</table>\n\n");
+
+        sb.append("<h2 id=\"algorithm\">Описание алгоритма</h2>\n");
+        sb.append("<table>\n");
+        sb.append("  <tr><th style=\"width:5%\">№</th><th>Действие</th><th>АС</th></tr>\n");
+        for (AlgorithmStep step : doc.getSteps()) {
+            String number = step.getNumber();
+            boolean isScenarioHeader = number != null && (number.startsWith("ОС") || number.startsWith("АС"));
+            sb.append("  <tr>\n");
+            if (isScenarioHeader) {
+                sb.append("    <td style=\"text-align:center;font-weight:bold\">").append(esc(number)).append("</td>\n");
+                sb.append("    <td colspan=\"2\" style=\"font-weight:bold\">").append(esc(step.getAction())).append("</td>\n");
+            } else {
+                sb.append("    <td style=\"text-align:center\">").append(esc(number)).append("</td>\n");
+                sb.append("    <td>").append(esc(step.getAction())).append("</td>\n");
+                String asVal = step.getAs() != null ? step.getAs() : "\u2014";
+                sb.append("    <td style=\"text-align:center\">").append(esc(asVal)).append("</td>\n");
+            }
+            sb.append("  </tr>\n");
         }
         sb.append("</table>\n");
 
