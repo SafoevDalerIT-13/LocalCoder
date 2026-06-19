@@ -83,7 +83,7 @@
                 <div class="form-group">
                     <label for="sourceCode">Исходный код</label>
                     <div class="drop-zone" id="dropZone">
-                        <textarea id="sourceCode" rows="12" placeholder="Вставьте код или перетащите .java файл сюда..." required></textarea>
+                        <textarea id="sourceCode" rows="12" placeholder="Вставьте код или перетащите .java файл сюда..."></textarea>
                         <div class="drop-overlay" id="dropOverlay">
                             <span class="material-symbols-outlined drop-icon">upload_file</span>
                             <span class="drop-text">Перетащите файл сюда</span>
@@ -129,11 +129,40 @@
                 <div class="form-group">
                     <label for="templateCode">Шаблон документа</label>
                     <select id="templateCode">
-                        <option value="200">200 (входные-выходные-алгоритм)</option>
-                        <option value="325">325</option>
                         <option value="211">211 (входные-выходные-ошибки)</option>
                         <option value="230">230 (общие сведения-алгоритм)</option>
                     </select>
+                </div>
+                <div id="templateParams" class="template-params hidden">
+                    <div class="form-group">
+                        <label class="params-label">Параметры шаблона</label>
+                        <div class="params-grid">
+                            <div class="param-field">
+                                <label for="algorithmCode">Алгоритм</label>
+                                <input type="text" id="algorithmCode" placeholder="А_ДДС_3_1">
+                            </div>
+                            <div class="param-field">
+                                <label for="algorithmDescription">Описание алгоритма</label>
+                                <input type="text" id="algorithmDescription" placeholder="Наполнение фильтров...">
+                            </div>
+                            <div class="param-field">
+                                <label for="algorithmLink">Ссылка на алгоритм</label>
+                                <input type="text" id="algorithmLink" placeholder="https://wiki.example.com/...">
+                            </div>
+                            <div class="param-field">
+                                <label for="authorities">Полномочия</label>
+                                <input type="text" id="authorities" placeholder="705601">
+                            </div>
+                            <div class="param-field">
+                                <label for="slaP95">SLA p95</label>
+                                <input type="text" id="slaP95" placeholder="&lt; 2 сек.">
+                            </div>
+                            <div class="param-field">
+                                <label for="slaP99">SLA p99</label>
+                                <input type="text" id="slaP99" placeholder="&lt; 5 сек.">
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <button type="submit" id="generateBtn">
                     <span class="material-symbols-outlined">auto_awesome</span>

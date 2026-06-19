@@ -64,7 +64,7 @@ public class ProjectController {
             return ResponseEntity.badRequest().body(Map.of("error", "Список файлов пуст"));
         }
         if (templateCode == null || templateCode.isBlank()) {
-            templateCode = "200";
+            templateCode = "230";
         }
 
         try {
@@ -96,7 +96,7 @@ public class ProjectController {
         try {
             ProjectService.ChatResult result = projectService.chatWithFiles(primaryFile,
                     contextFiles != null ? contextFiles : List.of(),
-                    instruction, templateCode != null ? templateCode : "200");
+                    instruction, templateCode != null ? templateCode : "230");
             log.info("Генерация завершена: chatId={}", result.chatId());
             return ResponseEntity.ok(result);
         } catch (Exception e) {
