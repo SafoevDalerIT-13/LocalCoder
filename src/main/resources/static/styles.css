@@ -1767,6 +1767,13 @@ a.file-tree-name:hover {
     font-size: 0.9rem;
 }
 
+/* Simple actions */
+.simple-actions {
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
 /* Project actions */
 .project-actions {
     margin-top: 0.75rem;

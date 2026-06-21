@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const form = document.getElementById('docForm');
     const sourceCodeEl = document.getElementById('sourceCode');
+    const contextCodeEl = document.getElementById('contextCode');
+    const simplePreviewBtn = document.getElementById('simplePreviewBtn');
     const templateSelect = document.getElementById('templateCode');
     const generateBtn = document.getElementById('generateBtn');
     const statusDiv = document.getElementById('status');
@@ -118,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 name: c.name,
                 mode: c.mode || 'simple',
                 sourceCode: c.sourceCode,
+                contextCode: c.contextCode || '',
                 templateCode: c.templateCode,
                 algorithmCode: c.algorithmCode,
                 algorithmDescription: c.algorithmDescription,
@@ -240,6 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
             name: data.name,
             mode: data.mode || 'simple',
             sourceCode: '',
+            contextCode: '',
             templateCode: '230',
             algorithmCode: '',
             algorithmDescription: '',
@@ -261,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const prev = getActiveChat();
         if (prev) {
             prev.sourceCode = sourceCodeEl.value;
+            prev.contextCode = contextCodeEl.value;
             prev.templateCode = templateSelect.value;
             prev.algorithmCode = algorithmCodeInput.value;
             prev.algorithmDescription = algorithmDescriptionInput.value;
@@ -273,6 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const chat = getActiveChat();
         if (!chat) return;
         sourceCodeEl.value = chat.sourceCode || '';
+        contextCodeEl.value = chat.contextCode || '';
         templateSelect.value = chat.templateCode || '230';
         algorithmCodeInput.value = chat.algorithmCode || '';
         algorithmDescriptionInput.value = chat.algorithmDescription || '';
@@ -815,6 +821,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function buildSimplePrompt() {
+        const main = sourceCodeEl.value.trim();
+        const ctx = contextCodeEl.value.trim();
+        let prompt = '';
+        if (main) {
+            prompt += '// === [ГЛАВНЫЙ] ===\n' + main + '\n';
+        }
+        if (ctx) {
+            prompt += '\n// === [КОНТЕКСТ] ===\n' + ctx + '\n';
+        }
+        return prompt || main;
+    }
+
+    simplePreviewBtn.addEventListener('click', () => {
+        const main = sourceCodeEl.value.trim();
+        const ctx = contextCodeEl.value.trim();
+        if (!main && !ctx) {
+            showStatus('Введите код для документации', 'error');
+            return;
+        }
+        const prompt = buildSimplePrompt();
+        promptPreviewContent.textContent = prompt;
+        promptModalGenerateBtn.onclick = () => {
+            promptModal.classList.add('hidden');
+            doGenerate();
+        };
+        promptModal.classList.remove('hidden');
+    });
+
     function getMainFileName() {
         for (const fp in selections) {
             if (selections[fp].isMain) {
@@ -866,10 +901,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function doGenerate() {
         if (_submitting) return;
-        const sourceCode = sourceCodeEl.value.trim();
+        const sourceCode = buildSimplePrompt();
         const templateCode = templateSelect.value;
         if (!sourceCode) {
-            showStatus('Пожалуйста, введите исходный код', 'error');
+            showStatus('Введите код для документации', 'error');
             sourceCodeEl.classList.add('shake');
             setTimeout(() => sourceCodeEl.classList.remove('shake'), 500);
             return;
@@ -1154,6 +1189,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const chat = getActiveChat();
         if (chat) {
             chat.sourceCode = sourceCodeEl.value;
+            chat.contextCode = contextCodeEl.value;
             chat.templateCode = templateSelect.value;
             chat.algorithmCode = algorithmCodeInput.value;
             chat.algorithmDescription = algorithmDescriptionInput.value;
@@ -1173,6 +1209,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setInputsDisabled(disabled) {
         sourceCodeEl.disabled = disabled;
+        contextCodeEl.disabled = disabled;
         templateSelect.disabled = disabled;
         correctionInput.disabled = disabled;
         correctBtn.disabled = disabled;
@@ -1180,6 +1217,7 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadFolderBtn.disabled = disabled;
         generateBtn.disabled = disabled;
         previewPromptBtn.disabled = disabled;
+        simplePreviewBtn.disabled = disabled;
         document.querySelectorAll('.file-checkbox').forEach(cb => cb.disabled = disabled);
         document.querySelectorAll('.tab').forEach(tab => tab.style.pointerEvents = disabled ? 'none' : '');
         stopBtn.classList.toggle('hidden', !disabled);

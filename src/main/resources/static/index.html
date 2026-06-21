@@ -81,9 +81,9 @@
         <form id="docForm">
             <div id="tabSimple" class="tab-pane active">
                 <div class="form-group">
-                    <label for="sourceCode">Исходный код</label>
+                    <label for="sourceCode">Главный код (документируемый)</label>
                     <div class="drop-zone" id="dropZone">
-                        <textarea id="sourceCode" rows="12" placeholder="Вставьте код или перетащите .java файл сюда..."></textarea>
+                        <textarea id="sourceCode" rows="10" placeholder="Код, для которого нужно сгенерировать документацию..."></textarea>
                         <div class="drop-overlay" id="dropOverlay">
                             <span class="material-symbols-outlined drop-icon">upload_file</span>
                             <span class="drop-text">Перетащите файл сюда</span>
@@ -98,6 +98,16 @@
                         <span id="fileName" class="file-name"></span>
                         <input type="file" id="fileInput" accept=".java,.kt,.groovy,.py,.js,.ts,.cs,.cpp,.c,.h,.rs,.go,.swift,.kt,.kts" hidden>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label for="contextCode">Контекст (DTO, зависимости — не документируются)</label>
+                    <textarea id="contextCode" rows="6" placeholder="Код зависимостей, DTO, утилит — для понимания модели..."></textarea>
+                </div>
+                <div class="simple-actions">
+                    <button type="button" id="simplePreviewBtn" class="preview-prompt-btn">
+                        <span class="material-symbols-outlined">visibility</span>
+                        <span>Предпросмотр промта</span>
+                    </button>
                 </div>
             </div>
 
