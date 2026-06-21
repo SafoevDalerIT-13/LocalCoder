@@ -1,5 +1,6 @@
 package com.localdoc.controller;
 
+import com.localdoc.dto.request.ProjectGenerateRequest;
 import com.localdoc.service.ProjectService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,54 +54,37 @@ public class ProjectController {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    @PostMapping("/generate")
-    public ResponseEntity<?> generate(@RequestBody Map<String, Object> body) {
-        List<String> files = (List<String>) body.get("files");
-        String templateCode = (String) body.get("templateCode");
-        log.info("Генерация для {} файлов, шаблон={}", files != null ? files.size() : 0, templateCode);
-
-        if (files == null || files.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Список файлов пуст"));
+    @PostMapping("/preview-prompt")
+    public ResponseEntity<?> previewPrompt(@RequestBody ProjectGenerateRequest req) {
+        log.info("previewPrompt: {} selections", req.getSelections() != null ? req.getSelections().size() : 0);
+        if (req.getSelections() == null || req.getSelections().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Нет выбранных кусков кода"));
         }
-        if (templateCode == null || templateCode.isBlank()) {
-            templateCode = "230";
-        }
-
         try {
-            List<ProjectService.ProjectGenerateResult> results =
-                    projectService.generateForFiles(files, templateCode);
-            log.info("Генерация завершена: {} результатов", results.size());
-            return ResponseEntity.ok(results);
+            String prompt = projectService.buildPromptFromSelections(req.getProjectId(), req.getSelections());
+            return ResponseEntity.ok(Map.of("prompt", prompt));
         } catch (Exception e) {
-            log.error("Ошибка генерации: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    @SuppressWarnings("unchecked")
-    @PostMapping("/chat")
-    public ResponseEntity<?> chat(@RequestBody Map<String, Object> body) {
-        String primaryFile = (String) body.get("primaryFile");
-        List<String> contextFiles = (List<String>) body.get("contextFiles");
-        String instruction = (String) body.get("instruction");
-        String templateCode = (String) body.get("templateCode");
-
-        if (primaryFile == null || primaryFile.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Не выбран основной файл для документирования"));
+    @PostMapping("/generate-from-selections")
+    public ResponseEntity<?> generateFromSelections(@RequestBody ProjectGenerateRequest req) {
+        log.info("generateFromSelections: {} selections, template={}",
+                req.getSelections() != null ? req.getSelections().size() : 0, req.getTemplateCode());
+        if (req.getSelections() == null || req.getSelections().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Нет выбранных кусков кода"));
         }
-
-        log.info("Запрос на генерацию: primaryFile={}, contextFiles={}, templateCode={}",
-                primaryFile, contextFiles != null ? contextFiles.size() : 0, templateCode);
-
         try {
-            ProjectService.ChatResult result = projectService.chatWithFiles(primaryFile,
-                    contextFiles != null ? contextFiles : List.of(),
-                    instruction, templateCode != null ? templateCode : "230");
-            log.info("Генерация завершена: chatId={}", result.chatId());
+            ProjectService.ChatResult result = projectService.generateFromSelections(
+                    req.getProjectId(), req.getSelections(),
+                    req.getTemplateCode(),
+                    req.getAlgorithmCode(), req.getAlgorithmDescription(), req.getAlgorithmLink(),
+                    req.getAuthorities(), req.getSlaP95(), req.getSlaP99());
+            log.info("generateFromSelections завершён: chatId={}", result.chatId());
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            log.error("Ошибка генерации: {}", e.getMessage(), e);
+            log.error("generateFromSelections ошибка: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
