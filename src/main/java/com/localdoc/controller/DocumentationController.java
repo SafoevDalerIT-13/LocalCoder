@@ -1,8 +1,10 @@
 package com.localdoc.controller;
 
+import com.localdoc.dto.request.ChatStateRequest;
 import com.localdoc.dto.request.CorrectionRequest;
 import com.localdoc.dto.request.CreateChatRequest;
 import com.localdoc.dto.request.DocumentationRequest;
+import com.localdoc.dto.response.ChatResponse;
 import com.localdoc.dto.response.CreateChatResponse;
 import com.localdoc.dto.response.DocumentationResponse;
 import com.localdoc.entity.ChatEntity;
@@ -39,6 +41,21 @@ public class DocumentationController {
         return ResponseEntity.ok(new CreateChatResponse(chat.getId(), chat.getName(), chat.getMode()));
     }
 
+    @GetMapping("/chats")
+    public ResponseEntity<List<ChatResponse>> getChats() {
+        List<ChatResponse> chats = sessionManager.listChats().stream()
+                .map(ChatResponse::from)
+                .toList();
+        return ResponseEntity.ok(chats);
+    }
+
+    @PutMapping("/chat/{chatId}/state")
+    public ResponseEntity<Void> updateChatState(@PathVariable UUID chatId,
+                                                 @RequestBody ChatStateRequest request) {
+        sessionManager.updateChatState(chatId, request.getFrontendState());
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping("/chat/{chatId}")
     public ResponseEntity<Void> deleteChat(@PathVariable UUID chatId) {
         sessionManager.deleteChat(chatId);
@@ -62,14 +79,40 @@ public class DocumentationController {
         sessionManager.updateTemplateCode(chatId, request.getTemplateCode());
 
         long startTime = System.currentTimeMillis();
-        String documentation = docService.generateDocumentation(
-                chatId, request.getSourceCode(), request.getTemplateCode(),
-                request.getAlgorithmCode(), request.getAlgorithmDescription(),
-                request.getAlgorithmLink(),
-                request.getAuthorities(), request.getSlaP95(), request.getSlaP99()
-        );
+        String documentation;
+        try {
+            documentation = docService.generateDocumentation(
+                    chatId, request.getSourceCode(), request.getTemplateCode(),
+                    request.getAlgorithmCode(), request.getAlgorithmDescription(),
+                    request.getAlgorithmLink(),
+                    request.getAuthorities(), request.getSlaP95(), request.getSlaP99()
+            );
+        } catch (Exception e) {
+            if (docService.isCancelled(chatId)) {
+                docService.clearCancelled(chatId);
+                log.info("Генерация отменена: chatId={}, результат отброшен", chatId);
+                List<String> existingVersions = sessionManager.getAssistantMessages(chatId);
+                return ResponseEntity.ok(new DocumentationResponse(
+                        null, request.getTemplateCode(), chatId.toString(),
+                        existingVersions.size() - 1, existingVersions, request.getAlgorithmCode(),
+                        request.getAlgorithmDescription(), request.getAlgorithmLink(),
+                        request.getAuthorities(), request.getSlaP95(), request.getSlaP99()));
+            }
+            throw e;
+        }
         long durationMs = System.currentTimeMillis() - startTime;
         double durationSec = durationMs / 1000.0;
+
+        if (docService.isCancelled(chatId)) {
+            docService.clearCancelled(chatId);
+            log.info("Генерация отменена: chatId={}, результат отброшен", chatId);
+            List<String> existingVersions = sessionManager.getAssistantMessages(chatId);
+            return ResponseEntity.ok(new DocumentationResponse(
+                    null, request.getTemplateCode(), chatId.toString(),
+                    existingVersions.size() - 1, existingVersions, request.getAlgorithmCode(),
+                    request.getAlgorithmDescription(), request.getAlgorithmLink(),
+                    request.getAuthorities(), request.getSlaP95(), request.getSlaP99()));
+        }
 
         sessionManager.addMessage(chatId, new UserMessage("Сгенерируй документацию для кода:\n\n" + request.getSourceCode() + "\n\nШаблон: " + request.getTemplateCode()));
         if (documentation != null) {
@@ -89,15 +132,44 @@ public class DocumentationController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/generate/cancel/{chatId}")
+    public ResponseEntity<Void> cancelGenerate(@PathVariable UUID chatId) {
+        docService.cancelGeneration(chatId);
+        log.info("Запрос на отмену генерации: chatId={}", chatId);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/correct")
     public ResponseEntity<DocumentationResponse> correct(@RequestBody CorrectionRequest request) {
         UUID chatId = request.getChatId();
         log.info("Получен запрос на корректировку: chatId={}", chatId);
 
         long startTime = System.currentTimeMillis();
-        String corrected = docService.generateCorrection(chatId, request.getMessage());
+        String corrected;
+        try {
+            corrected = docService.generateCorrection(chatId, request.getMessage());
+        } catch (Exception e) {
+            if (docService.isCancelled(chatId)) {
+                docService.clearCancelled(chatId);
+                log.info("Корректировка отменена: chatId={}, результат отброшен", chatId);
+                List<String> existingVersions = sessionManager.getAssistantMessages(chatId);
+                return ResponseEntity.ok(new DocumentationResponse(
+                        null, null, chatId.toString(),
+                        existingVersions.size() - 1, existingVersions, null, null, null, null, null, null));
+            }
+            throw e;
+        }
         long durationMs = System.currentTimeMillis() - startTime;
         double durationSec = durationMs / 1000.0;
+
+        if (docService.isCancelled(chatId)) {
+            docService.clearCancelled(chatId);
+            log.info("Корректировка отменена: chatId={}, результат отброшен", chatId);
+            List<String> existingVersions = sessionManager.getAssistantMessages(chatId);
+            return ResponseEntity.ok(new DocumentationResponse(
+                    null, null, chatId.toString(),
+                    existingVersions.size() - 1, existingVersions, null, null, null, null, null, null));
+        }
 
         List<String> versions = sessionManager.getAssistantMessages(chatId);
 

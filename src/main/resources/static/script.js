@@ -1,3 +1,377 @@
+// i18n
+const _translations = {
+  ru: {
+    subtitle: 'Локальная LLM — Confluence Helper',
+    helpTitle: 'Инструкция',
+    settingsTitle: 'Настройки',
+    themeTitle: 'Тема',
+    newChat: 'Новый чат',
+    chats: 'Чаты',
+    pinned: 'Закреплено',
+    noChats: 'Нет чатов',
+    showSidebar: 'Показать панель',
+    hideSidebar: 'Скрыть панель',
+    getStarted: 'Приступить к работе',
+    modePrefix: 'Режим',
+    simpleMode: 'Обычный',
+    projectMode: 'Проект',
+    mainCode: 'Главный код (документируемый)',
+    dropFile: 'Перетащите файл сюда',
+    dropHint: '.java, .kt, .py, .js и другие',
+    selectFile: 'Выбрать файл',
+    contextCode: 'Контекст (DTO, зависимости — не документируются)',
+    previewPrompt: 'Предпросмотр промта',
+    uploadProject: 'Загрузить папку с проектом',
+    mainToggle: 'Главный код (документируемый)',
+    clearSelection: 'Сбросить',
+    selectionsSummary: 'Выбранные фрагменты',
+    template: 'Шаблон документа',
+    generate: 'Сгенерировать',
+    stop: 'Стоп',
+    generating: 'Генерация...',
+    result: 'Результат генерации',
+    code: 'Код',
+    preview: 'Просмотр',
+    copy: 'Копировать',
+    download: 'Скачать',
+    versions: 'Версии',
+    correctionHint: 'Что-то не так? Напишите модели что исправить',
+    correctionPlaceholder: 'Например: убери раздел про исключения, добавь больше деталей по алгоритму...',
+    correct: 'Исправить',
+    copied: 'Скопировано!',
+    emptyResponse: 'Пустой ответ от модели',
+    rename: 'Переименовать',
+    delete: 'Удалить',
+    pin: 'Закрепить',
+    unpin: 'Открепить',
+    chooseMode: 'Выберите режим чата',
+    modeSimpleTitle: 'Обычный чат',
+    modeSimpleDesc: 'Генерация документации для одного файла с кодом',
+    modeProjectTitle: 'Проект чат',
+    modeProjectDesc: 'Работа с целой папкой проекта, выбор файлов',
+    cancel: 'Отмена',
+    understanding: 'Понятно',
+    settingsLang: 'Язык',
+    settingsRu: 'Русский',
+    settingsEn: 'English',
+    settingsClose: 'Закрыть',
+    language: 'Язык',
+    russian: 'Русский',
+    english: 'English',
+    close: 'Закрыть',
+    template211: '211 (входные-выходные-ошибки)',
+    template230: '230 (общие сведения-алгоритм)',
+    paramAlgorithm: 'Алгоритм',
+    paramDescription: 'Описание алгоритма',
+    paramLink: 'Ссылка на алгоритм',
+    paramAuthorities: 'Полномочия',
+    paramSlaP95: 'SLA p95',
+    paramSlaP99: 'SLA p99',
+    templateParams: 'Параметры шаблона',
+    promptTitle: 'Предпросмотр промта',
+    generateFromPrompt: 'Сгенерировать',
+    paramAlgorithmPlaceholder: 'А_ДДС_3_1',
+    paramDescriptionPlaceholder: 'Наполнение фильтров...',
+    paramLinkPlaceholder: 'https://wiki.example.com/...',
+    paramAuthoritiesPlaceholder: '705601',
+    paramSlaP95Placeholder: '< 2 сек.',
+    paramSlaP99Placeholder: '< 5 сек.',
+    generatingStatus: 'Генерация документации...',
+    correctingStatus: 'Исправляю документацию...',
+    enterCodeError: 'Введите код для документации',
+    mainCodePlaceholder: 'Код, для которого нужно сгенерировать документацию...',
+    contextCodePlaceholder: 'Код зависимостей, DTO, утилит — для понимания модели...',
+    noSelectionsError: 'Нет выбранных фрагментов',
+    noSelectionsError2: 'Нет выбранных фрагментов кода',
+    noMainSelectionError: 'Отметьте один фрагмент как главный (документируемый код)',
+    noMainSelectionError2: 'Отметьте главный фрагмент',
+    loadProjectError: 'Сначала загрузите проект',
+    checkSelectionsError: 'Проверьте выбор фрагментов',
+    instructionsTitle: 'Инструкция по эксплуатации',
+    generationStopped: 'Генерация прервана',
+    correctionStopped: 'Корректировка прервана',
+    noActiveChat: 'Нет активного чата',
+  },
+  en: {
+    subtitle: 'Local LLM — Confluence Helper',
+    helpTitle: 'Instructions',
+    settingsTitle: 'Settings',
+    themeTitle: 'Theme',
+    newChat: 'New Chat',
+    chats: 'Chats',
+    pinned: 'Pinned',
+    noChats: 'No chats',
+    showSidebar: 'Show sidebar',
+    hideSidebar: 'Hide sidebar',
+    getStarted: 'Get Started',
+    modePrefix: 'Mode',
+    simpleMode: 'Simple',
+    projectMode: 'Project',
+    mainCode: 'Main Code (to document)',
+    dropFile: 'Drop a file here',
+    dropHint: '.java, .kt, .py, .js and others',
+    selectFile: 'Select File',
+    contextCode: 'Context (DTOs, dependencies — not documented)',
+    previewPrompt: 'Preview Prompt',
+    uploadProject: 'Upload Project Folder',
+    mainToggle: 'Main Code (to document)',
+    clearSelection: 'Clear',
+    selectionsSummary: 'Selected Fragments',
+    template: 'Document Template',
+    generate: 'Generate',
+    stop: 'Stop',
+    generating: 'Generating...',
+    result: 'Generation Result',
+    code: 'Code',
+    preview: 'Preview',
+    copy: 'Copy',
+    download: 'Download',
+    versions: 'Versions',
+    correctionHint: 'Something wrong? Tell the model what to fix',
+    correctionPlaceholder: 'E.g.: remove the exceptions section, add more algorithm details...',
+    correct: 'Correct',
+    copied: 'Copied!',
+    emptyResponse: 'Empty response from model',
+    rename: 'Rename',
+    delete: 'Delete',
+    pin: 'Pin',
+    unpin: 'Unpin',
+    chooseMode: 'Choose chat mode',
+    modeSimpleTitle: 'Simple Chat',
+    modeSimpleDesc: 'Generate documentation for a single code file',
+    modeProjectTitle: 'Project Chat',
+    modeProjectDesc: 'Work with an entire project folder, select files',
+    cancel: 'Cancel',
+    understanding: 'Got it',
+    settingsLang: 'Language',
+    settingsRu: 'Russian',
+    settingsEn: 'English',
+    settingsClose: 'Close',
+    language: 'Language',
+    russian: 'Russian',
+    english: 'English',
+    close: 'Close',
+    template211: '211 (input-output-errors)',
+    template230: '230 (overview-algorithm)',
+    paramAlgorithm: 'Algorithm',
+    paramDescription: 'Algorithm description',
+    paramLink: 'Algorithm link',
+    paramAuthorities: 'Authorities',
+    paramSlaP95: 'SLA p95',
+    paramSlaP99: 'SLA p99',
+    templateParams: 'Template parameters',
+    promptTitle: 'Prompt Preview',
+    generateFromPrompt: 'Generate',
+    paramAlgorithmPlaceholder: 'A_DDS_3_1',
+    paramDescriptionPlaceholder: 'Filter filling...',
+    paramLinkPlaceholder: 'https://wiki.example.com/...',
+    paramAuthoritiesPlaceholder: '705601',
+    paramSlaP95Placeholder: '< 2 sec.',
+    paramSlaP99Placeholder: '< 5 sec.',
+    generatingStatus: 'Generating documentation...',
+    correctingStatus: 'Correcting documentation...',
+    enterCodeError: 'Enter code to document',
+    mainCodePlaceholder: 'Code to generate documentation for...',
+    contextCodePlaceholder: 'Dependencies, DTOs, utilities — for model understanding...',
+    noSelectionsError: 'No selected fragments',
+    noSelectionsError2: 'No selected code fragments',
+    noMainSelectionError: 'Mark one fragment as main (documented code)',
+    noMainSelectionError2: 'Mark a main fragment',
+    loadProjectError: 'Load a project first',
+    checkSelectionsError: 'Check fragment selection',
+    instructionsTitle: 'User Guide',
+    generationStopped: 'Generation stopped',
+    correctionStopped: 'Correction stopped',
+    noActiveChat: 'No active chat',
+  },
+};
+
+let _currentLang = localStorage.getItem('app_language') || 'ru';
+
+function getAppLang() {
+  return _currentLang;
+}
+
+function t(key) {
+  return _translations[_currentLang]?.[key] || _translations.ru[key] || key;
+}
+
+function setAppLanguage(lang) {
+  _currentLang = lang;
+  localStorage.setItem('app_language', lang);
+  applyTranslations();
+}
+
+function applyTranslations() {
+  const lang = _currentLang;
+  // Settings modal
+  document.querySelectorAll('#settingsModal .settings-option').forEach(el => el.classList.remove('active'));
+  const ruBtn = document.getElementById('settingsLangRu');
+  const enBtn = document.getElementById('settingsLangEn');
+  if (ruBtn) { ruBtn.textContent = '🇷🇺 ' + t('russian'); if (lang === 'ru') ruBtn.classList.add('active'); }
+  if (enBtn) { enBtn.textContent = '🇬🇧 ' + t('english'); if (lang === 'en') enBtn.classList.add('active'); }
+  const sTitle = document.getElementById('settingsModalTitle');
+  if (sTitle) sTitle.textContent = t('settingsTitle');
+  const sLabel = document.getElementById('settingsLangLabel');
+  if (sLabel) sLabel.textContent = t('language');
+  const sClose = document.getElementById('settingsCloseBtn');
+  if (sClose) sClose.textContent = t('close');
+
+  // Header
+  const subEl = document.querySelector('.subtitle');
+  if (subEl) subEl.textContent = t('subtitle');
+  const helpBtn = document.getElementById('helpBtn');
+  if (helpBtn) helpBtn.setAttribute('aria-label', t('helpTitle'));
+  const settingsBtn = document.getElementById('settingsBtn');
+  if (settingsBtn) settingsBtn.setAttribute('aria-label', t('settingsTitle'));
+  const themeBtn = document.getElementById('theme-toggle');
+  if (themeBtn) themeBtn.setAttribute('aria-label', t('themeTitle'));
+
+  // Sidebar
+  const sidebarTitle = document.querySelector('.sidebar-title span:last-child');
+  if (sidebarTitle) sidebarTitle.textContent = t('chats');
+  const newChatBtnEl = document.getElementById('newChatBtn');
+  if (newChatBtnEl) newChatBtnEl.setAttribute('title', t('newChat'));
+  const sidebarToggleEl = document.getElementById('sidebarToggle');
+  if (sidebarToggleEl) sidebarToggleEl.setAttribute('title', t('hideSidebar'));
+  const sidebarRevealEl = document.getElementById('sidebarReveal');
+  if (sidebarRevealEl) sidebarRevealEl.setAttribute('title', t('showSidebar'));
+
+  // Welcome screen
+  const startBtnEl = document.getElementById('startBtn');
+  if (startBtnEl) {
+    const span = startBtnEl.querySelector('span:last-child');
+    if (span) span.textContent = t('getStarted');
+  }
+
+  // Mode badge
+  const modeBadgeText = document.querySelector('.mode-badge-text');
+  if (modeBadgeText) {
+    const isProj = modeBadgeText.closest('.mode-badge')?.querySelector('.mode-badge-icon')?.textContent === 'folder_open';
+    modeBadgeText.textContent = t('modePrefix') + ': ' + (isProj ? t('projectMode') : t('simpleMode'));
+  }
+
+  // Form labels & buttons
+  const mainCodeLabel = document.querySelector('label[for="sourceCode"]');
+  if (mainCodeLabel) mainCodeLabel.textContent = t('mainCode');
+  const contextCodeLabel = document.querySelector('label[for="contextCode"]');
+  if (contextCodeLabel) contextCodeLabel.textContent = t('contextCode');
+  const sourceCodeInput = document.getElementById('sourceCode');
+  if (sourceCodeInput) sourceCodeInput.placeholder = t('mainCodePlaceholder');
+  const contextCodeInput = document.getElementById('contextCode');
+  if (contextCodeInput) contextCodeInput.placeholder = t('contextCodePlaceholder');
+  const templateLabel = document.querySelector('label[for="templateCode"]');
+  if (templateLabel) templateLabel.textContent = t('template');
+  const dropText = document.querySelector('.drop-text');
+  if (dropText) dropText.textContent = t('dropFile');
+  const dropHint = document.querySelector('.drop-hint');
+  if (dropHint) dropHint.textContent = t('dropHint');
+  const fileBtnSpan = document.getElementById('fileBtn')?.querySelector('span:last-child');
+  if (fileBtnSpan) fileBtnSpan.textContent = t('selectFile');
+
+  // Template select options
+  const ts = document.getElementById('templateCode');
+  if (ts) {
+    const t211 = ts.querySelector('option[value="211"]');
+    if (t211) t211.textContent = t('template211');
+    const t230 = ts.querySelector('option[value="230"]');
+    if (t230) t230.textContent = t('template230');
+  }
+
+  // Preview prompt buttons
+  document.querySelectorAll('.preview-prompt-btn span:last-child').forEach(el => {
+    el.textContent = t('previewPrompt');
+  });
+
+  // Upload button
+  const uploadBtn = document.getElementById('uploadFolderBtn');
+  if (uploadBtn) {
+    const span = uploadBtn.querySelector('span:last-child');
+    if (span) span.textContent = t('uploadProject');
+  }
+
+  // Main toggle
+  const mainToggleLabel = document.querySelector('.main-toggle-label span');
+  if (mainToggleLabel) mainToggleLabel.textContent = t('mainToggle');
+
+  // Selections summary header
+  const selSummaryHeader = document.querySelector('.selections-summary-header span:last-child');
+  if (selSummaryHeader) selSummaryHeader.textContent = t('selectionsSummary');
+
+  // Clear button
+  const selClearBtn = document.getElementById('selClearBtn');
+  if (selClearBtn) selClearBtn.textContent = t('clearSelection');
+
+  // Params label
+  const paramsLabel = document.querySelector('.params-label');
+  if (paramsLabel) paramsLabel.textContent = t('templateParams');
+
+  // Generate / stop buttons
+  const genBtnSpan = document.getElementById('generateBtn')?.querySelector('span:last-child');
+  if (genBtnSpan) genBtnSpan.textContent = t('generate');
+  const stopBtnSpan = document.getElementById('stopBtn')?.querySelector('span:last-child');
+  if (stopBtnSpan) stopBtnSpan.textContent = t('stop');
+
+  // Result
+  const resultHeader = document.querySelector('.result-header h2');
+  if (resultHeader) resultHeader.textContent = t('result');
+  const codeViewBtn = document.querySelector('.view-btn[data-view="code"] span:last-child');
+  if (codeViewBtn) codeViewBtn.textContent = t('code');
+  const previewViewBtn = document.querySelector('.view-btn[data-view="preview"] span:last-child');
+  if (previewViewBtn) previewViewBtn.textContent = t('preview');
+  const copyBtnSpan = document.getElementById('copyBtn')?.querySelector('span:last-child');
+  if (copyBtnSpan) copyBtnSpan.textContent = t('copy');
+  const downloadBtnSpan = document.getElementById('downloadBtn')?.querySelector('span:last-child');
+  if (downloadBtnSpan) downloadBtnSpan.textContent = t('download');
+  const versionLabel = document.querySelector('.version-bar-label');
+  if (versionLabel) versionLabel.textContent = t('versions') + ':';
+
+  // Correction
+  const correctionHeader = document.querySelector('.correction-header span:last-child');
+  if (correctionHeader) correctionHeader.textContent = t('correctionHint');
+  const corrInput = document.getElementById('correctionInput');
+  if (corrInput) corrInput.placeholder = t('correctionPlaceholder');
+  const corrBtnSpan = document.getElementById('correctBtn')?.querySelector('span:last-child');
+  if (corrBtnSpan) corrBtnSpan.textContent = t('correct');
+
+  // Mode modal
+  const modeModalTitle = document.querySelector('#modeModal .modal-title');
+  if (modeModalTitle) modeModalTitle.textContent = t('chooseMode');
+  const modeOptions = document.querySelectorAll('.modal-option');
+  if (modeOptions.length >= 2) {
+    const title1 = modeOptions[0].querySelector('.modal-option-title');
+    const desc1 = modeOptions[0].querySelector('.modal-option-desc');
+    if (title1) title1.textContent = t('modeSimpleTitle');
+    if (desc1) desc1.textContent = t('modeSimpleDesc');
+    const title2 = modeOptions[1].querySelector('.modal-option-title');
+    const desc2 = modeOptions[1].querySelector('.modal-option-desc');
+    if (title2) title2.textContent = t('modeProjectTitle');
+    if (desc2) desc2.textContent = t('modeProjectDesc');
+  }
+  const modeCloseBtn = document.getElementById('modalCloseBtn');
+  if (modeCloseBtn) modeCloseBtn.textContent = t('cancel');
+
+  // Params placeholders
+  const algInput = document.getElementById('algorithmCode');
+  if (algInput) algInput.placeholder = t('paramAlgorithmPlaceholder');
+  const descInput = document.getElementById('algorithmDescription');
+  if (descInput) descInput.placeholder = t('paramDescriptionPlaceholder');
+  const linkInput = document.getElementById('algorithmLink');
+  if (linkInput) linkInput.placeholder = t('paramLinkPlaceholder');
+  const authInput = document.getElementById('authorities');
+  if (authInput) authInput.placeholder = t('paramAuthoritiesPlaceholder');
+  const p95Input = document.getElementById('slaP95');
+  if (p95Input) p95Input.placeholder = t('paramSlaP95Placeholder');
+  const p99Input = document.getElementById('slaP99');
+  if (p99Input) p99Input.placeholder = t('paramSlaP99Placeholder');
+
+  // Instructions modal
+  const instTitle = document.querySelector('#instructionsModal .modal-title');
+  if (instTitle) instTitle.textContent = t('instructionsTitle');
+  const instCloseBtn = document.getElementById('instructionsCloseBtn');
+  if (instCloseBtn) instCloseBtn.textContent = t('understanding');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
     const form = document.getElementById('docForm');
@@ -68,6 +442,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const promptPreviewContent = document.getElementById('promptPreviewContent');
     const promptModalClose = document.getElementById('promptModalClose');
     const promptModalGenerateBtn = document.getElementById('promptModalGenerateBtn');
+    const instructionsModal = document.getElementById('instructionsModal');
+    const helpBtn = document.getElementById('helpBtn');
+    const instructionsCloseBtn = document.getElementById('instructionsCloseBtn');
+
+    function showInstructions(afterClose) {
+        instructionsModal.classList.remove('hidden');
+        const onClose = () => {
+            instructionsModal.classList.add('hidden');
+            instructionsCloseBtn.removeEventListener('click', onClose);
+            instructionsModal.removeEventListener('click', overlayHandler);
+            if (!localStorage.getItem('instructions_seen')) {
+                localStorage.setItem('instructions_seen', '1');
+            }
+            if (afterClose) afterClose();
+        };
+        const overlayHandler = (e) => {
+            if (e.target === instructionsModal) onClose();
+        };
+        instructionsCloseBtn.addEventListener('click', onClose);
+        instructionsModal.addEventListener('click', overlayHandler);
+    }
 
     if (modalCloseBtn) {
         modalCloseBtn.addEventListener('click', () => modeModal.classList.add('hidden'));
@@ -129,7 +524,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 slaP95: c.slaP95,
                 slaP99: c.slaP99,
                 versions: c.versions,
-                currentVersion: c.currentVersion
+                currentVersion: c.currentVersion,
+                pinned: c.pinned || false
             })),
             activeChatId: activeChatId
         };
@@ -199,11 +595,35 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function togglePin(id) {
+        const chat = chats.find(c => c.id === id);
+        if (!chat) return;
+        chat.pinned = !chat.pinned;
+        saveState();
+        renderChatList();
+    }
+
     function renderChatList() {
         chatList.innerHTML = '';
-        chats.forEach(chat => {
+        const pinned = chats.filter(c => c.pinned);
+        const unpinned = chats.filter(c => !c.pinned);
+
+        if (pinned.length > 0) {
+            const label = document.createElement('div');
+            label.className = 'chat-group-label';
+            label.textContent = 'Закреплено';
+            chatList.appendChild(label);
+        }
+
+        function appendChatItem(chat) {
             const div = document.createElement('div');
-            div.className = `chat-item${chat.id === activeChatId ? ' active' : ''}`;
+            div.className = `chat-item${chat.id === activeChatId ? ' active' : ''}${chat.pinned ? ' chat-item-pinned' : ''}`;
+            const pinBtn = document.createElement('button');
+            pinBtn.className = 'chat-item-act chat-item-pin';
+            pinBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px">push_pin</span>';
+            pinBtn.title = chat.pinned ? 'Открепить' : 'Закрепить';
+            pinBtn.addEventListener('click', e => { e.stopPropagation(); togglePin(chat.id); });
+            div.appendChild(pinBtn);
             const nameSpan = document.createElement('span');
             nameSpan.className = 'chat-item-name';
             nameSpan.textContent = chat.name;
@@ -224,14 +644,22 @@ document.addEventListener('DOMContentLoaded', () => {
             div.appendChild(del);
             div.addEventListener('click', () => switchChat(chat.id));
             chatList.appendChild(div);
-        });
+        }
+
+        pinned.forEach(appendChatItem);
+        if (pinned.length > 0 && unpinned.length > 0) {
+            const sep = document.createElement('div');
+            sep.className = 'chat-divider';
+            chatList.appendChild(sep);
+        }
+        unpinned.forEach(appendChatItem);
     }
 
     async function createChat(name, mode) {
         const response = await fetch('/api/docs/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: name || 'Новый чат', mode: mode || 'simple' })
+            body: JSON.stringify({ name: name || t('newChat'), mode: mode || 'simple' })
         });
         if (!response.ok) {
             showStatus('Ошибка создания чата', 'error');
@@ -252,7 +680,8 @@ document.addEventListener('DOMContentLoaded', () => {
             slaP95: '',
             slaP99: '',
             versions: [],
-            currentVersion: -1
+            currentVersion: -1,
+            pinned: false
         };
         chats.push(chat);
         await switchChat(chat.id);
@@ -291,32 +720,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetTab = chat.mode === 'project' ? 'project' : 'simple';
         document.querySelector('.tabs').classList.toggle('hidden', true);
         document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab' + targetTab.charAt(0).toUpperCase() + targetTab.slice(1)));
-        generateBtn.querySelector('span:last-child').textContent = 'Сгенерировать';
-        const badge = document.getElementById('modeBadge');
-        const badgeIcon = badge.querySelector('.mode-badge-icon');
-        const badgeText = badge.querySelector('.mode-badge-text');
-        if (targetTab === 'project') {
-            badgeIcon.textContent = 'folder_open';
-            badgeText.textContent = 'Режим: Проект';
-        } else {
-            badgeIcon.textContent = 'edit_note';
-            badgeText.textContent = 'Режим: Обычный';
-        }
-        badge.classList.remove('hidden');
-        renderChatList();
-        if (versions.length > 0 && chat.currentVersion >= 0) {
-            const idx = Math.min(chat.currentVersion, versions.length - 1);
-            showResult(versions[idx], versions, idx);
-        } else if (versions.length > 0) {
-            const idx = versions.length - 1;
-            showResult(versions[idx], versions, idx);
-        } else {
-            hideResult();
-        }
+        generateBtn.querySelector('span:last-child').textContent = t('generate');
+
         if (_generatingChatId !== null) {
             if (id === _generatingChatId) {
                 setInputsDisabled(true);
-                showStatus('Генерация документации...', 'info');
+                showStatus(t('generatingStatus'), 'info');
             } else {
                 if (abortController) {
                     abortController.abort();
@@ -675,16 +1084,16 @@ document.addEventListener('DOMContentLoaded', () => {
     previewPromptBtn.addEventListener('click', async () => {
         const selList = getSelectionsList();
         if (selList.length === 0) {
-            showStatus('Нет выбранных фрагментов кода', 'error');
+            showStatus(t('noSelectionsError2'), 'error');
             return;
         }
         if (!hasMainSelection()) {
-            showStatus('Отметьте один фрагмент как главный (документируемый код)', 'error');
+            showStatus(t('noMainSelectionError'), 'error');
             return;
         }
         const projectId = projectIdInput.value;
         if (!projectId) {
-            showStatus('Сначала загрузите проект', 'error');
+            showStatus(t('loadProjectError'), 'error');
             return;
         }
 
@@ -721,16 +1130,16 @@ document.addEventListener('DOMContentLoaded', () => {
     async function doProjectGenerate() {
         const selList = getSelectionsList();
         if (selList.length === 0) {
-            showStatus('Нет выбранных фрагментов кода', 'error');
+            showStatus(t('noSelectionsError2'), 'error');
             return;
         }
         if (!hasMainSelection()) {
-            showStatus('Отметьте один фрагмент как главный (документируемый код)', 'error');
+            showStatus(t('noMainSelectionError'), 'error');
             return;
         }
         const projectId = projectIdInput.value;
         if (!projectId) {
-            showStatus('Сначала загрузите проект', 'error');
+            showStatus(t('loadProjectError'), 'error');
             return;
         }
 
@@ -745,10 +1154,10 @@ document.addEventListener('DOMContentLoaded', () => {
         _submitting = true;
         setInputsDisabled(true);
         hideResult();
-        showStatus('Генерация документации...', 'info');
+        showStatus(t('generatingStatus'), 'info');
 
         const chat = getActiveChat();
-        if (!chat) { showStatus('Нет активного чата', 'error'); setInputsDisabled(false); _submitting = false; return; }
+        if (!chat) { showStatus(t('noActiveChat'), 'error'); setInputsDisabled(false); _submitting = false; return; }
 
         const originChatId = chat.id;
         _generatingChatId = originChatId;
@@ -796,7 +1205,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 slaP95,
                 slaP99,
                 versions: data.versions || [],
-                currentVersion: data.versionIndex || 0
+                currentVersion: data.versionIndex || 0,
+                pinned: false
             };
             chats.push(newChat);
             saveState();
@@ -807,7 +1217,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             if (err.name === 'AbortError') {
                 if (activeChatId === originChatId) {
-                    showStatus('Генерация прервана', 'info');
+                    showStatus(t('generationStopped'), 'info');
                     setTimeout(hideStatus, 3000);
                 }
             } else if (activeChatId === originChatId) {
@@ -838,7 +1248,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const main = sourceCodeEl.value.trim();
         const ctx = contextCodeEl.value.trim();
         if (!main && !ctx) {
-            showStatus('Введите код для документации', 'error');
+            showStatus(t('enterCodeError'), 'error');
             return;
         }
         const prompt = buildSimplePrompt();
@@ -860,31 +1270,83 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // === Simple mode file handling ===
-    function readFile(file) {
-        const ext = file.name.split('.').pop();
-        const langMap = { java: 'Java', kt: 'Kotlin', groovy: 'Groovy', py: 'Python', js: 'JavaScript', ts: 'TypeScript', cs: 'C#', cpp: 'C++', c: 'C', h: 'C/C++ Header', rs: 'Rust', go: 'Go', swift: 'Swift' };
-        const lang = langMap[ext] || file.name;
-        fileName.textContent = `${file.name} (${lang})`;
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            sourceCodeEl.value = e.target.result;
-            const chat = getActiveChat();
-            if (chat) {
-                chat.name = file.name;
-                fetch('/api/docs/chat/' + encodeURIComponent(chat.id) + '/rename', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: file.name
-                });
-            }
-            renderChatList();
-            if (sourceCodeEl.value.trim() && !_submitting) {
-                doGenerate();
-            }
-        };
-        reader.readAsText(file);
+    // File chip management
+    let mainFiles = [];
+    let ctxFiles = [];
+    function buildFileText(files) {
+        return files.map(f => f.content).join('\n\n');
     }
 
+    function renderFileChips(containerId, files, removeFn) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        if (files.length === 0) { container.innerHTML = ''; return; }
+        container.innerHTML = files.map((f, i) =>
+            `<span class="file-chip">
+                <span class="file-chip-name">${escHtml(f.name)}</span>
+                <button class="file-chip-remove" data-index="${i}" type="button">
+                    <span class="material-symbols-outlined" style="font-size:14px">close</span>
+                </button>
+            </span>`
+        ).join('');
+        container.querySelectorAll('.file-chip-remove').forEach(btn => {
+            btn.addEventListener('click', () => removeFn(parseInt(btn.dataset.index)));
+        });
+    }
+
+    function addMainFiles(fileList) {
+        const newFiles = [];
+        let pending = fileList.length;
+        if (pending === 0) return;
+        for (const file of fileList) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                newFiles.push({ name: file.name, content: e.target.result });
+                if (--pending === 0) {
+                    mainFiles = [...mainFiles, ...newFiles];
+                    sourceCodeEl.value = buildFileText(mainFiles);
+                    renderFileChips('mainFileChips', mainFiles, removeMainFile);
+                    autoSave();
+                }
+            };
+            reader.readAsText(file);
+        }
+    }
+
+    function addCtxFiles(fileList) {
+        const newFiles = [];
+        let pending = fileList.length;
+        if (pending === 0) return;
+        for (const file of fileList) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                newFiles.push({ name: file.name, content: e.target.result });
+                if (--pending === 0) {
+                    ctxFiles = [...ctxFiles, ...newFiles];
+                    contextCodeEl.value = buildFileText(ctxFiles);
+                    renderFileChips('ctxFileChips', ctxFiles, removeCtxFile);
+                    autoSave();
+                }
+            };
+            reader.readAsText(file);
+        }
+    }
+
+    function removeMainFile(index) {
+        mainFiles = mainFiles.filter((_, i) => i !== index);
+        sourceCodeEl.value = buildFileText(mainFiles);
+        renderFileChips('mainFileChips', mainFiles, removeMainFile);
+        autoSave();
+    }
+
+    function removeCtxFile(index) {
+        ctxFiles = ctxFiles.filter((_, i) => i !== index);
+        contextCodeEl.value = buildFileText(ctxFiles);
+        renderFileChips('ctxFileChips', ctxFiles, removeCtxFile);
+        autoSave();
+    }
+
+    // Main drop zone
     ['dragenter', 'dragover'].forEach(evt => {
         dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
     });
@@ -892,19 +1354,43 @@ document.addEventListener('DOMContentLoaded', () => {
         dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.remove('drag-over'); });
     });
     dropZone.addEventListener('drop', e => {
-        if (e.dataTransfer.files.length > 0) readFile(e.dataTransfer.files[0]);
+        if (e.dataTransfer.files.length > 0) addMainFiles(Array.from(e.dataTransfer.files));
     });
     fileBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', () => {
-        if (fileInput.files.length > 0) readFile(fileInput.files[0]);
+        if (fileInput.files.length > 0) addMainFiles(Array.from(fileInput.files));
     });
+
+    // Context drop zone
+    const ctxDropZone = document.getElementById('ctxDropZone');
+    const ctxFileBtn = document.getElementById('ctxFileBtn');
+    const ctxFileInput = document.getElementById('ctxFileInput');
+
+    if (ctxDropZone) {
+        ['dragenter', 'dragover'].forEach(evt => {
+            ctxDropZone.addEventListener(evt, e => { e.preventDefault(); ctxDropZone.classList.add('drag-over'); });
+        });
+        ['dragleave', 'drop'].forEach(evt => {
+            ctxDropZone.addEventListener(evt, e => { e.preventDefault(); ctxDropZone.classList.remove('drag-over'); });
+        });
+        ctxDropZone.addEventListener('drop', e => {
+            if (e.dataTransfer.files.length > 0) addCtxFiles(Array.from(e.dataTransfer.files));
+        });
+    }
+    if (ctxFileBtn) ctxFileBtn.addEventListener('click', () => ctxFileInput.click());
+    if (ctxFileInput) ctxFileInput.addEventListener('change', () => {
+        if (ctxFileInput.files.length > 0) addCtxFiles(Array.from(ctxFileInput.files));
+    });
+
+    // Remove orphaned old code
+    }
 
     async function doGenerate() {
         if (_submitting) return;
         const sourceCode = buildSimplePrompt();
         const templateCode = templateSelect.value;
         if (!sourceCode) {
-            showStatus('Введите код для документации', 'error');
+            showStatus(t('enterCodeError'), 'error');
             sourceCodeEl.classList.add('shake');
             setTimeout(() => sourceCodeEl.classList.remove('shake'), 500);
             return;
@@ -919,10 +1405,10 @@ document.addEventListener('DOMContentLoaded', () => {
         _submitting = true;
         setInputsDisabled(true);
         hideResult();
-        showStatus('Генерация документации...', 'info');
+        showStatus(t('generatingStatus'), 'info');
 
         const chat = getActiveChat();
-        if (!chat) { showStatus('Нет активного чата', 'error'); setInputsDisabled(false); _submitting = false; return; }
+        if (!chat) { showStatus(t('noActiveChat'), 'error'); setInputsDisabled(false); _submitting = false; return; }
 
         const originChatId = chat.id;
         _generatingChatId = originChatId;
@@ -966,7 +1452,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             if (err.name === 'AbortError') {
                 if (activeChatId === originChatId) {
-                    showStatus('Генерация прервана', 'info');
+                    showStatus(t('generationStopped'), 'info');
                     setTimeout(hideStatus, 3000);
                 }
             } else if (activeChatId === originChatId) {
@@ -997,6 +1483,9 @@ document.addEventListener('DOMContentLoaded', () => {
             abortController.abort();
             abortController = null;
         }
+        if (activeChatId) {
+            fetch('/api/docs/generate/cancel/' + encodeURIComponent(activeChatId), { method: 'POST' }).catch(() => {});
+        }
     });
 
     async function doCorrect(chatId, message) {
@@ -1017,7 +1506,7 @@ document.addEventListener('DOMContentLoaded', () => {
         _generatingChatId = originChatId;
         _submitting = true;
         setInputsDisabled(true);
-        showStatus('Исправляю документацию...', 'info');
+        showStatus(t('correctingStatus'), 'info');
 
         abortController = new AbortController();
 
@@ -1062,7 +1551,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             if (err.name === 'AbortError') {
                 if (activeChatId === originChatId) {
-                    showStatus('Корректировка прервана', 'info');
+                    showStatus(t('correctionStopped'), 'info');
                     setTimeout(hideStatus, 3000);
                 }
             } else if (activeChatId === originChatId) {
@@ -1221,6 +1710,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.file-checkbox').forEach(cb => cb.disabled = disabled);
         document.querySelectorAll('.tab').forEach(tab => tab.style.pointerEvents = disabled ? 'none' : '');
         stopBtn.classList.toggle('hidden', !disabled);
+        const span = generateBtn.querySelector('span:last-child');
+        if (span) span.textContent = disabled ? t('generating') : t('generate');
     }
 
     copyBtn.addEventListener('click', async () => {
@@ -1317,28 +1808,61 @@ document.addEventListener('DOMContentLoaded', () => {
         modeModal.addEventListener('click', handler);
     }
 
-    newChatBtn.addEventListener('click', () => {
-        showModeModal((mode) => {
-            if (abortController) {
-                abortController.abort();
-                abortController = null;
-            }
-            _submitting = false;
-            _generatingChatId = null;
-            setInputsDisabled(false);
-            correctionInput.value = '';
-            projectPath.value = '';
-            projectIdInput.value = '';
-            selections = {};
-            projectFiles = [];
-            currentPreviewFile = null;
-            selClickState = null;
-            hideSelectionPreview();
-            selectionsSummary.classList.add('hidden');
-            projectActions.classList.add('hidden');
-            document.querySelectorAll('.file-checkbox:checked').forEach(cb => cb.checked = false);
-            createChat('Новый чат', mode);
+    if (helpBtn) {
+        helpBtn.addEventListener('click', () => showInstructions());
+    }
+
+    const settingsModal = document.getElementById('settingsModal');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+
+    function showSettings() {
+        setAppLanguage(getAppLang());
+        settingsModal.classList.remove('hidden');
+    }
+    function hideSettings() {
+        settingsModal.classList.add('hidden');
+    }
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', showSettings);
+    }
+    if (settingsCloseBtn) {
+        settingsCloseBtn.addEventListener('click', hideSettings);
+    }
+    if (settingsModal) {
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) hideSettings();
         });
+    }
+
+    newChatBtn.addEventListener('click', () => {
+        if (!localStorage.getItem('instructions_seen')) {
+            showInstructions(() => {
+                showModeModal((mode) => {
+                    if (abortController) { abortController.abort(); abortController = null; }
+                    if (activeChatId) { fetch('/api/docs/generate/cancel/' + encodeURIComponent(activeChatId), { method: 'POST' }).catch(() => {}); }
+                    _submitting = false; _generatingChatId = null; setInputsDisabled(false);
+                    correctionInput.value = ''; projectPath.value = ''; projectIdInput.value = '';
+                    selections = {}; projectFiles = []; currentPreviewFile = null; selClickState = null;
+                    hideSelectionPreview();
+                    selectionsSummary.classList.add('hidden'); projectActions.classList.add('hidden');
+                    document.querySelectorAll('.file-checkbox:checked').forEach(cb => cb.checked = false);
+                    createChat(t('newChat'), mode);
+                });
+            });
+        } else {
+            showModeModal((mode) => {
+                if (abortController) { abortController.abort(); abortController = null; }
+                if (activeChatId) { fetch('/api/docs/generate/cancel/' + encodeURIComponent(activeChatId), { method: 'POST' }).catch(() => {}); }
+                _submitting = false; _generatingChatId = null; setInputsDisabled(false);
+                correctionInput.value = ''; projectPath.value = ''; projectIdInput.value = '';
+                selections = {}; projectFiles = []; currentPreviewFile = null; selClickState = null;
+                hideSelectionPreview();
+                selectionsSummary.classList.add('hidden'); projectActions.classList.add('hidden');
+                document.querySelectorAll('.file-checkbox:checked').forEach(cb => cb.checked = false);
+                createChat(t('newChat'), mode);
+            });
+        }
     });
 
     function resetStartBtn() {
@@ -1347,12 +1871,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     startBtn.addEventListener('click', () => {
-        showModeModal(async (mode) => {
-            startBtn.disabled = true;
-            startBtn.innerHTML = '<span class="material-symbols-outlined">sync</span><span>Создание...</span>';
-            const chat = await createChat('Новый чат', mode);
-            if (chat) resetStartBtn();
-        });
+        if (!localStorage.getItem('instructions_seen')) {
+            showInstructions(() => {
+                showModeModal(async (mode) => {
+                    startBtn.disabled = true;
+                    startBtn.innerHTML = '<span class="material-symbols-outlined">sync</span><span>Создание...</span>';
+                    const chat = await createChat('Новый чат', mode);
+                    if (chat) resetStartBtn();
+                });
+            });
+        } else {
+            showModeModal(async (mode) => {
+                startBtn.disabled = true;
+                startBtn.innerHTML = '<span class="material-symbols-outlined">sync</span><span>Создание...</span>';
+                const chat = await createChat('Новый чат', mode);
+                if (chat) resetStartBtn();
+            });
+        }
     });
 
     document.querySelectorAll('.tab').forEach(tab => {
@@ -1364,7 +1899,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
             tab.classList.add('active');
             document.getElementById('tab' + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)).classList.add('active');
-            generateBtn.querySelector('span:last-child').textContent = 'Сгенерировать';
+            generateBtn.querySelector('span:last-child').textContent = t('generate');
         });
     });
 
@@ -1424,6 +1959,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function init() {
+        applyTranslations();
         const hasSaved = loadState();
         if (hasSaved && chats.length > 0) {
             renderChatList();

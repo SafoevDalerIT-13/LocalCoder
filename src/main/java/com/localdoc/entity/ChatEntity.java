@@ -39,6 +39,9 @@ public class ChatEntity {
     @Column(name = "template_code", length = 50)
     private String templateCode;
 
+    @Column(name = "frontend_state", columnDefinition = "TEXT")
+    private String frontendState;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;

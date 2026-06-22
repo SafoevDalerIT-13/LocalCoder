@@ -20,6 +20,8 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +32,46 @@ public class DocumentationService {
     final ChatSessionManager sessionManager;
     final XhtmlRenderService xhtmlRenderService;
     final ObjectMapper objectMapper;
+    private final ConcurrentHashMap<UUID, Boolean> generationCancelled = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, Thread> generationThreads = new ConcurrentHashMap<>();
+
+    public void cancelGeneration(UUID chatId) {
+        generationCancelled.put(chatId, true);
+        Thread thread = generationThreads.get(chatId);
+        if (thread != null) {
+            thread.interrupt();
+        }
+    }
+
+    public boolean isCancelled(UUID chatId) {
+        return generationCancelled.getOrDefault(chatId, false);
+    }
+
+    public void clearCancelled(UUID chatId) {
+        generationCancelled.remove(chatId);
+    }
+
+    private void checkCancelled(UUID chatId) {
+        if (isCancelled(chatId) || Thread.currentThread().isInterrupted()) {
+            throw new DocumentationGenerationException("Генерация прервана пользователем");
+        }
+    }
+
+    private String callLlm(UUID chatId, Prompt prompt) {
+        checkCancelled(chatId);
+        try {
+            String result = chatClient.prompt(prompt).call().content();
+            checkCancelled(chatId);
+            return result;
+        } catch (DocumentationGenerationException e) {
+            throw e;
+        } catch (Exception e) {
+            if (isCancelled(chatId) || Thread.currentThread().isInterrupted()) {
+                throw new DocumentationGenerationException("Генерация прервана пользователем");
+            }
+            throw e;
+        }
+    }
 
     public String generateDocumentation(UUID chatId, String sourceCode, String templateCode, String algorithmCode,
                                          String algorithmDescription, String algorithmLink,
@@ -43,15 +85,21 @@ public class DocumentationService {
             throw new InvalidRequestException("Код шаблона обязателен");
         }
 
-        if ("211".equals(templateCode)) {
-            return generate211(chatId, sourceCode, algorithmCode, algorithmDescription, algorithmLink, authorities, slaP95, slaP99);
-        }
+        clearCancelled(chatId);
+        generationThreads.put(chatId, Thread.currentThread());
+        try {
+            if ("211".equals(templateCode)) {
+                return generate211(chatId, sourceCode, algorithmCode, algorithmDescription, algorithmLink, authorities, slaP95, slaP99);
+            }
 
-        if ("230".equals(templateCode)) {
-            return generate230(chatId, sourceCode, algorithmCode, algorithmDescription, algorithmLink);
-        }
+            if ("230".equals(templateCode)) {
+                return generate230(chatId, sourceCode, algorithmCode, algorithmDescription, algorithmLink);
+            }
 
-        return generateLegacy(chatId, sourceCode, templateCode, algorithmCode, authorities, slaP95, slaP99);
+            return generateLegacy(chatId, sourceCode, templateCode, algorithmCode, authorities, slaP95, slaP99);
+        } finally {
+            generationThreads.remove(chatId);
+        }
     }
 
     private String generate211(UUID chatId, String sourceCode,
@@ -60,28 +108,34 @@ public class DocumentationService {
         log.info("Генерация 211: AI → JSON → XHTML");
 
         try {
-            String json = callLlmForJson(sourceCode, algorithmCode, authorities, slaP95, slaP99);
+            String json = callLlmForJson(chatId, sourceCode, algorithmCode, authorities, slaP95, slaP99);
+            checkCancelled(chatId);
             Document211 doc = parseDocumentFromJson(json, algorithmCode, algorithmDescription, algorithmLink, authorities, slaP95, slaP99);
             String xhtml = xhtmlRenderService.render211(doc);
             log.info("Сгенерирован XHTML через JSON (211): длина={}", xhtml.length());
             return xhtml;
+        } catch (DocumentationGenerationException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("JSON-подход не сработал, падаем на XHTML: {}", e.getMessage());
         }
 
-        return generateLegacyFallback(sourceCode, algorithmCode, authorities, slaP95, slaP99);
+        return generateLegacyFallback(chatId, sourceCode, algorithmCode, authorities, slaP95, slaP99);
     }
 
     private String generate230(UUID chatId, String sourceCode,
-                                String algorithmCode, String algorithmDescription, String algorithmLink) {
+                                 String algorithmCode, String algorithmDescription, String algorithmLink) {
         log.info("Генерация 230: AI → JSON → XHTML");
 
         try {
-            String json = callLlmFor230Json(sourceCode);
+            String json = callLlmFor230Json(chatId, sourceCode);
+            checkCancelled(chatId);
             Document230 doc = parseDocument230FromJson(json, algorithmCode, algorithmDescription, algorithmLink);
             String xhtml = xhtmlRenderService.render230(doc);
             log.info("Сгенерирован XHTML через JSON (230): длина={}", xhtml.length());
             return xhtml;
+        } catch (DocumentationGenerationException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("JSON-подход 230 не сработал, падаем на Legacy: {}", e.getMessage());
         }
@@ -89,7 +143,7 @@ public class DocumentationService {
         return generateLegacy(chatId, sourceCode, "230", algorithmCode, null, null, null);
     }
 
-    private String callLlmFor230Json(String sourceCode) {
+    private String callLlmFor230Json(UUID chatId, String sourceCode) {
         String systemPrompt = """
                 Ты — технический писатель, анализирующий Java-код.
                 Проанализируй код и верни ТОЛЬКО валидный JSON.
@@ -128,9 +182,7 @@ public class DocumentationService {
         messages.add(new SystemMessage(systemPrompt));
         messages.add(new UserMessage(userContent));
 
-        String result = chatClient.prompt(new Prompt(messages))
-                .call()
-                .content();
+        String result = callLlm(chatId, new Prompt(messages));
 
         if (result != null) {
             result = result.replaceAll("(?s)^```[a-zA-Z]*\\s*", "").replaceAll("(?s)```\\s*$", "").trim();
@@ -180,9 +232,9 @@ public class DocumentationService {
                 .build();
     }
 
-    private String callLlmForJson(String sourceCode,
-                                   String algorithmCode, String authorities,
-                                   String slaP95, String slaP99) {
+    private String callLlmForJson(UUID chatId, String sourceCode,
+                                    String algorithmCode, String authorities,
+                                    String slaP95, String slaP99) {
         String systemPrompt = """
                 Ты — технический писатель, анализирующий Java-код.
                 Проанализируй все классы в предоставленном коде и верни ТОЛЬКО валидный JSON.
@@ -227,9 +279,7 @@ public class DocumentationService {
         log.debug("Промпт JSON (211): системный={} символов, код={} символов",
                 systemPrompt.length(), sourceCode.length());
 
-        String result = chatClient.prompt(new Prompt(messages))
-                .call()
-                .content();
+        String result = callLlm(chatId, new Prompt(messages));
 
         if (result != null) {
             result = result.replaceAll("(?s)^```[a-zA-Z]*\\s*", "").replaceAll("(?s)```\\s*$", "").trim();
@@ -304,9 +354,9 @@ public class DocumentationService {
         return result;
     }
 
-    private String generateLegacyFallback(String sourceCode,
-                                           String algorithmCode, String authorities,
-                                           String slaP95, String slaP99) {
+    private String generateLegacyFallback(UUID chatId, String sourceCode,
+                                            String algorithmCode, String authorities,
+                                            String slaP95, String slaP99) {
         log.info("Fallback 211: XHTML напрямую от AI");
         String fallbackTemplate = """
                 Ты — технический писатель. Проанализируй код и создай документацию в чистом XHTML (Confluence Storage Format).
@@ -332,9 +382,7 @@ public class DocumentationService {
         messages.add(new SystemMessage(fallbackTemplate));
         messages.add(new UserMessage("КОД:\n" + sourceCode + "\n\nСоздай XHTML документацию. Начни с <h1>."));
 
-        String result = chatClient.prompt(new Prompt(messages))
-                .call()
-                .content();
+        String result = callLlm(chatId, new Prompt(messages));
 
         if (result != null) {
             result = result.replaceAll("(?s)^```[a-zA-Z]*\\s*", "").replaceAll("(?s)```\\s*$", "").trim();
@@ -366,9 +414,7 @@ public class DocumentationService {
 
         try {
             log.info("Отправка запроса к LLM (legacy)...");
-            String result = chatClient.prompt(new Prompt(messages))
-                    .call()
-                    .content();
+            String result = callLlm(chatId, new Prompt(messages));
             log.info("Ответ от LLM получен, длина={} символов", result != null ? result.length() : 0);
 
             if (result != null) {
@@ -389,28 +435,28 @@ public class DocumentationService {
             throw new InvalidRequestException("Сообщение не может быть пустым");
         }
 
-        ChatEntity chat = sessionManager.getChat(chatId);
-        String templateCode = chat.getTemplateCode();
-        String template = templateCode != null
-                ? templateRepository.findById(templateCode)
-                        .map(com.localdoc.entity.TemplateEntity::getContent)
-                        .orElse("Исправь документацию на основе замечания.")
-                : "Исправь документацию на основе замечания.";
-
-        String reminder = "\n\nИсправь документацию по замечанию выше. Выведи ТОЛЬКО готовый XHTML, без обрамляющих маркдаун-блоков. Начинай сразу с XHTML-тегов.";
-        sessionManager.addMessage(chatId, new UserMessage(userMessage + reminder));
-
-        List<Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(template));
-        messages.addAll(sessionManager.getMessages(chatId));
-
-        log.debug("Корректировка: чат={}, длина истории={} сообщений", chatId, messages.size());
-
+        clearCancelled(chatId);
+        generationThreads.put(chatId, Thread.currentThread());
         try {
+            ChatEntity chat = sessionManager.getChat(chatId);
+            String templateCode = chat.getTemplateCode();
+            String template = templateCode != null
+                    ? templateRepository.findById(templateCode)
+                            .map(com.localdoc.entity.TemplateEntity::getContent)
+                            .orElse("Исправь документацию на основе замечания.")
+                    : "Исправь документацию на основе замечания.";
+
+            String reminder = "\n\nИсправь документацию по замечанию выше. Выведи ТОЛЬКО готовый XHTML, без обрамляющих маркдаун-блоков. Начинай сразу с XHTML-тегов.";
+            sessionManager.addMessage(chatId, new UserMessage(userMessage + reminder));
+
+            List<Message> messages = new ArrayList<>();
+            messages.add(new SystemMessage(template));
+            messages.addAll(sessionManager.getMessages(chatId));
+
+            log.debug("Корректировка: чат={}, длина истории={} сообщений", chatId, messages.size());
+
             log.info("Отправка запроса на корректировку к LLM...");
-            String result = chatClient.prompt(new Prompt(messages))
-                    .call()
-                    .content();
+            String result = callLlm(chatId, new Prompt(messages));
             log.info("Ответ на корректировку получен, длина={} символов", result != null ? result.length() : 0);
 
             if (result != null) {
@@ -418,9 +464,13 @@ public class DocumentationService {
                 sessionManager.addMessage(chatId, new AssistantMessage(result));
             }
             return result;
+        } catch (DocumentationGenerationException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Ошибка при корректировке: {}", e.getMessage(), e);
             throw new DocumentationGenerationException("Ошибка при корректировке документации", e);
+        } finally {
+            generationThreads.remove(chatId);
         }
     }
 }

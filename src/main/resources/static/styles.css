@@ -232,6 +232,12 @@ body {
     padding: 0.5rem;
 }
 
+.chat-divider {
+    height: 1px;
+    background: var(--border-container);
+    margin: 0.5rem 0.75rem;
+}
+
 .chat-item {
     display: flex;
     align-items: center;
@@ -261,6 +267,27 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
     flex: 1;
+}
+
+.chat-group-label {
+    padding: 0.5rem 0.75rem 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.chat-item-pin {
+    display: inline-flex !important;
+    opacity: 0.4;
+}
+.chat-item-pin:hover {
+    opacity: 1;
+}
+.chat-item.chat-item-pinned .chat-item-pin {
+    opacity: 1;
+    color: var(--btn-primary-bg);
 }
 
 .chat-item-act {
@@ -337,6 +364,13 @@ body {
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 2rem;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: 1rem;
 }
 
 .title-section h1 {
@@ -457,6 +491,47 @@ label {
     align-items: center;
     gap: 0.75rem;
     margin-top: 0.5rem;
+}
+
+.file-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+.file-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: var(--btn-copy-bg);
+    border: 1px solid var(--btn-copy-border);
+    border-radius: 6px;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+}
+.file-chip-name {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.file-chip-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1;
+}
+.file-chip-remove:hover {
+    color: var(--text-primary);
+}
+.file-chip-remove .material-symbols-outlined {
+    font-size: 14px;
 }
 
 .file-btn {
@@ -1463,6 +1538,41 @@ a.file-tree-name:hover {
     font-weight: 600;
     color: var(--text-primary);
 }
+
+.settings-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.settings-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+.settings-options {
+    display: flex;
+    gap: 0.5rem;
+}
+.settings-option {
+    flex: 1;
+    padding: 0.6rem 1rem;
+    border: 1px solid var(--border-container);
+    border-radius: 8px;
+    background: var(--btn-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.15s;
+}
+.settings-option:hover {
+    background: var(--btn-hover-bg);
+}
+.settings-option.active {
+    border-color: var(--btn-primary-bg);
+    background: var(--chat-item-active);
+    color: var(--chat-item-active-text);
+}
+
 .modal-options {
     display: flex;
     flex-direction: column;
@@ -1856,6 +1966,32 @@ a.file-tree-name:hover {
     word-break: break-word;
     border: 1px solid var(--border-container);
     margin: 0;
+}
+
+.instructions-content {
+    max-height: 50vh;
+    overflow-y: auto;
+    line-height: 1.6;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    padding-right: 0.5rem;
+}
+.instructions-content h4 {
+    margin: 1rem 0 0.4rem;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+.instructions-content p {
+    margin: 0 0 0.6rem;
+    color: var(--text-secondary);
+}
+.instructions-content ul {
+    margin: 0 0 0.6rem;
+    padding-left: 1.3rem;
+    color: var(--text-secondary);
+}
+.instructions-content li {
+    margin: 0.2rem 0;
 }
 
 @media (max-width: 600px) {
