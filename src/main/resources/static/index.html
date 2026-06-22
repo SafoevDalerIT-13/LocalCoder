@@ -81,9 +81,9 @@
         <form id="docForm">
             <div id="tabSimple" class="tab-pane active">
                 <div class="form-group">
-                    <label for="sourceCode">Исходный код</label>
+                    <label for="sourceCode">Главный код (документируемый)</label>
                     <div class="drop-zone" id="dropZone">
-                        <textarea id="sourceCode" rows="12" placeholder="Вставьте код или перетащите .java файл сюда..."></textarea>
+                        <textarea id="sourceCode" rows="10" placeholder="Код, для которого нужно сгенерировать документацию..."></textarea>
                         <div class="drop-overlay" id="dropOverlay">
                             <span class="material-symbols-outlined drop-icon">upload_file</span>
                             <span class="drop-text">Перетащите файл сюда</span>
@@ -99,6 +99,16 @@
                         <input type="file" id="fileInput" accept=".java,.kt,.groovy,.py,.js,.ts,.cs,.cpp,.c,.h,.rs,.go,.swift,.kt,.kts" hidden>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label for="contextCode">Контекст (DTO, зависимости — не документируются)</label>
+                    <textarea id="contextCode" rows="6" placeholder="Код зависимостей, DTO, утилит — для понимания модели..."></textarea>
+                </div>
+                <div class="simple-actions">
+                    <button type="button" id="simplePreviewBtn" class="preview-prompt-btn">
+                        <span class="material-symbols-outlined">visibility</span>
+                        <span>Предпросмотр промта</span>
+                    </button>
+                </div>
             </div>
 
             <div id="tabProject" class="tab-pane">
@@ -110,18 +120,37 @@
                     <input type="file" id="folderInput" webkitdirectory multiple style="display:none">
                 </div>
                 <input type="hidden" id="projectPath">
+                <input type="hidden" id="projectId">
                 <div id="fileTree" class="file-tree"></div>
-                <div id="filePreview" class="file-preview hidden">
-                    <div class="file-preview-header">
-                        <span id="previewFileName" class="preview-file-name"></span>
-                        <button type="button" id="previewClose" class="preview-close">
+                <div id="selectionPreview" class="selection-preview hidden">
+                    <div class="selection-preview-header">
+                        <span id="selPreviewFileName" class="sel-preview-file-name"></span>
+                        <label class="main-toggle-label">
+                            <input type="checkbox" id="mainToggle">
+                            <span>Главный код (документируемый)</span>
+                        </label>
+                        <button type="button" id="selPreviewClose" class="sel-preview-close">
                             <span class="material-symbols-outlined">close</span>
                         </button>
                     </div>
-                    <pre id="previewContent" class="preview-content"></pre>
+                    <div id="selPreviewLines" class="sel-preview-lines"></div>
+                    <div id="selPreviewBar" class="sel-preview-bar hidden">
+                        <span id="selRangeText">Выбраны строки 1-10</span>
+                        <button type="button" id="selClearBtn" class="sel-clear-btn">Сбросить</button>
+                    </div>
+                </div>
+                <div id="selectionsSummary" class="selections-summary hidden">
+                    <div class="selections-summary-header">
+                        <span class="material-symbols-outlined">checklist</span>
+                        <span>Выбранные фрагменты</span>
+                    </div>
+                    <div id="selectionsList" class="selections-list"></div>
                 </div>
                 <div id="projectActions" class="project-actions hidden">
-                    <span id="selectedCount" class="selected-count">0 файлов выбрано</span>
+                    <button type="button" id="previewPromptBtn" class="preview-prompt-btn">
+                        <span class="material-symbols-outlined">visibility</span>
+                        <span>Предпросмотр промта</span>
+                    </button>
                 </div>
             </div>
 
@@ -252,6 +281,24 @@
             </button>
         </div>
         <button class="modal-close-btn" id="modalCloseBtn">Отмена</button>
+    </div>
+</div>
+
+<div id="promptModal" class="modal-overlay hidden">
+    <div class="modal modal-wide">
+        <div class="modal-header">
+            <h3 class="modal-title">Предпросмотр промта</h3>
+            <button type="button" id="promptModalClose" class="sel-preview-close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <pre id="promptPreviewContent" class="prompt-preview-content"></pre>
+        <div class="modal-footer">
+            <button type="button" id="promptModalGenerateBtn" class="generate-from-prompt-btn">
+                <span class="material-symbols-outlined">auto_awesome</span>
+                <span>Сгенерировать</span>
+            </button>
+        </div>
     </div>
 </div>
 

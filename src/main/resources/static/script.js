@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const form = document.getElementById('docForm');
     const sourceCodeEl = document.getElementById('sourceCode');
+    const contextCodeEl = document.getElementById('contextCode');
+    const simplePreviewBtn = document.getElementById('simplePreviewBtn');
     const templateSelect = document.getElementById('templateCode');
     const generateBtn = document.getElementById('generateBtn');
     const statusDiv = document.getElementById('status');
@@ -36,13 +38,20 @@ document.addEventListener('DOMContentLoaded', () => {
     let previewMode = false;
 
     const projectPath = document.getElementById('projectPath');
+    const projectIdInput = document.getElementById('projectId');
     const fileTree = document.getElementById('fileTree');
     const projectActions = document.getElementById('projectActions');
-    const selectedCount = document.getElementById('selectedCount');
-    const filePreview = document.getElementById('filePreview');
-    const previewContent = document.getElementById('previewContent');
-    const previewFileName = document.getElementById('previewFileName');
-    const previewClose = document.getElementById('previewClose');
+    const previewPromptBtn = document.getElementById('previewPromptBtn');
+    const selectionPreview = document.getElementById('selectionPreview');
+    const selPreviewLines = document.getElementById('selPreviewLines');
+    const selPreviewFileName = document.getElementById('selPreviewFileName');
+    const selPreviewClose = document.getElementById('selPreviewClose');
+    const selPreviewBar = document.getElementById('selPreviewBar');
+    const selRangeText = document.getElementById('selRangeText');
+    const selClearBtn = document.getElementById('selClearBtn');
+    const mainToggle = document.getElementById('mainToggle');
+    const selectionsSummary = document.getElementById('selectionsSummary');
+    const selectionsList = document.getElementById('selectionsList');
     const uploadFolderBtn = document.getElementById('uploadFolderBtn');
     const folderInput = document.getElementById('folderInput');
     const stopBtn = document.getElementById('stopBtn');
@@ -55,6 +64,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const authoritiesInput = document.getElementById('authorities');
     const slaP95Input = document.getElementById('slaP95');
     const slaP99Input = document.getElementById('slaP99');
+    const promptModal = document.getElementById('promptModal');
+    const promptPreviewContent = document.getElementById('promptPreviewContent');
+    const promptModalClose = document.getElementById('promptModalClose');
+    const promptModalGenerateBtn = document.getElementById('promptModalGenerateBtn');
 
     if (modalCloseBtn) {
         modalCloseBtn.addEventListener('click', () => modeModal.classList.add('hidden'));
@@ -69,6 +82,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let chats = [];
     let activeChatId = null;
     let versions = [];
+    let projectFiles = [];
+    let selections = {}; // filePath -> { filePath, lineStart, lineEnd, isMain, fileName }
+    let currentPreviewFile = null; // filePath currently shown in preview
+    let selClickState = null; // { filePath, selecting: 'start'|'end', startLine }
 
     function setTheme(theme) {
         if (theme === 'dark') {
@@ -103,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 name: c.name,
                 mode: c.mode || 'simple',
                 sourceCode: c.sourceCode,
+                contextCode: c.contextCode || '',
                 templateCode: c.templateCode,
                 algorithmCode: c.algorithmCode,
                 algorithmDescription: c.algorithmDescription,
@@ -225,6 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
             name: data.name,
             mode: data.mode || 'simple',
             sourceCode: '',
+            contextCode: '',
             templateCode: '230',
             algorithmCode: '',
             algorithmDescription: '',
@@ -246,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const prev = getActiveChat();
         if (prev) {
             prev.sourceCode = sourceCodeEl.value;
+            prev.contextCode = contextCodeEl.value;
             prev.templateCode = templateSelect.value;
             prev.algorithmCode = algorithmCodeInput.value;
             prev.algorithmDescription = algorithmDescriptionInput.value;
@@ -258,6 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const chat = getActiveChat();
         if (!chat) return;
         sourceCodeEl.value = chat.sourceCode || '';
+        contextCodeEl.value = chat.contextCode || '';
         templateSelect.value = chat.templateCode || '230';
         algorithmCodeInput.value = chat.algorithmCode || '';
         algorithmDescriptionInput.value = chat.algorithmDescription || '';
@@ -342,6 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return (bytes / 1048576).toFixed(1) + ' MB';
     }
 
+    // === Project mode: file tree ===
     function buildFileTree(files) {
         const root = {};
         files.forEach(f => {
@@ -367,9 +389,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = '';
         entries.forEach(([name, data]) => {
             if (data.type === 'file') {
+                const checked = selections[data.path] ? 'checked' : '';
                 html += `<div class="file-tree-item" style="padding-left:${depth * 20 + 8}px">
-                    <input type="radio" name="primaryFile" class="file-radio" data-path="${escHtml(data.path)}" title="Основной файл для документации">
-                    <input type="checkbox" class="file-checkbox" data-path="${escHtml(data.path)}">
+                    <input type="checkbox" class="file-checkbox" data-path="${escHtml(data.path)}" ${checked}>
                     <span class="file-tree-name">${escHtml(name)}</span>
                     <span class="file-tree-size">${formatSize(data.size)}</span>
                 </div>`;
@@ -384,53 +406,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return html;
     }
 
-    async function showFilePreview(relativePath) {
-        const rootPath = projectPath.value.trim().replace(/\\/g, '/').replace(/\/+$/, '');
-        const fullPath = rootPath + '/' + relativePath;
-
-        previewFileName.textContent = relativePath;
-        previewContent.textContent = 'Загрузка...';
-        filePreview.classList.remove('hidden');
-
-        try {
-            const response = await fetch('/api/docs/project/read?path=' + encodeURIComponent(fullPath));
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                previewContent.textContent = err.error || 'Ошибка загрузки файла';
-                return;
-            }
-            const data = await response.json();
-            previewContent.textContent = data.content || '(пустой файл)';
-        } catch (err) {
-            previewContent.textContent = 'Ошибка: ' + err.message;
-        }
-    }
-
-    previewClose.addEventListener('click', () => {
-        filePreview.classList.add('hidden');
-    });
-
     function renderFileTree(files) {
+        projectFiles = files;
         const tree = buildFileTree(files);
         fileTree.innerHTML = renderTreeNodes(tree, 0);
-        projectActions.classList.remove('hidden');
-        hidePreview();
-        updateSelectedCount();
+        hideSelectionPreview();
+        updateSelectionsSummary();
+        updateProjectActions();
+
         fileTree.querySelectorAll('.file-checkbox').forEach(cb => {
-            cb.addEventListener('change', updateSelectedCount);
+            cb.addEventListener('change', onFileCheckboxChange);
         });
-        fileTree.querySelectorAll('.file-radio').forEach(rb => {
-            rb.addEventListener('change', () => {
-                if (rb.checked) {
-                    const cb = rb.closest('.file-tree-item').querySelector('.file-checkbox');
-                    if (cb) cb.checked = true;
-                    updateSelectedCount();
-                }
-            });
-        });
+
         fileTree.addEventListener('click', e => {
-            if (e.target.closest('.file-checkbox')) return;
-            if (e.target.closest('.file-radio')) return;
             const arrow = e.target.closest('.dir-arrow');
             if (arrow) {
                 const dirEl = arrow.closest('.file-tree-dir');
@@ -445,134 +433,433 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = e.target.closest('.file-tree-item');
             if (item) {
                 const cb = item.querySelector('.file-checkbox');
-                if (cb) showFilePreview(cb.dataset.path);
+                if (cb && !e.target.closest('.file-checkbox')) {
+                    cb.checked = !cb.checked;
+                    cb.dispatchEvent(new Event('change'));
+                }
             }
         });
     }
 
-    function hidePreview() {
-        filePreview.classList.add('hidden');
-        previewContent.textContent = '';
-    }
+    function onFileCheckboxChange(e) {
+        const cb = e.target;
+        const filePath = cb.dataset.path;
 
-    function updateSelectedCount() {
-        const checked = document.querySelectorAll('.file-checkbox:checked').length;
-        const primary = document.querySelector('.file-radio:checked');
-        let text = checked + ' файлов выбрано';
-        if (primary) {
-            const name = primary.closest('.file-tree-item').querySelector('.file-tree-name').textContent;
-            text += ' — главный: ' + name;
+        if (cb.checked) {
+            if (!selections[filePath]) {
+                selections[filePath] = { filePath, lineStart: 1, lineEnd: 1, isMain: false };
+            }
+            showFileInPreview(filePath);
         } else {
-            text += ' (выберите главный файл для документации)';
+            delete selections[filePath];
+            if (currentPreviewFile === filePath) {
+                hideSelectionPreview();
+            }
         }
-        selectedCount.textContent = text;
+        updateSelectionsSummary();
+        updateProjectActions();
+        syncCheckboxStates();
     }
 
-    function renderVersions(vers, currentIdx) {
-        versionList.innerHTML = '';
-        if (!vers || vers.length === 0) {
-            versionBar.classList.add('hidden');
-            return;
-        }
-        versionBar.classList.remove('hidden');
-        vers.forEach((v, i) => {
-            const btn = document.createElement('button');
-            btn.className = `version-btn${i === currentIdx ? ' active' : ''}`;
-            btn.textContent = `v${i + 1}`;
-            btn.addEventListener('click', () => switchVersion(i));
-            versionList.appendChild(btn);
+    function syncCheckboxStates() {
+        fileTree.querySelectorAll('.file-checkbox').forEach(cb => {
+            cb.checked = !!selections[cb.dataset.path];
         });
     }
 
-    function switchVersion(idx) {
-        const chat = getActiveChat();
-        if (!chat || idx < 0 || idx >= versions.length) return;
-        chat.currentVersion = idx;
-        const content = versions[idx];
-        docContent.textContent = content;
-        if (previewMode) {
-            renderPreview(content);
-        }
-        renderVersions(versions, idx);
-        saveState();
+    // === Code preview with line selection ===
+    function hideSelectionPreview() {
+        selectionPreview.classList.add('hidden');
+        currentPreviewFile = null;
+        selClickState = null;
     }
 
-    function showStatus(message, type = 'info') {
-        statusDiv.innerHTML = '';
-        if (type === 'error') {
-            const icon = document.createElement('span');
-            icon.className = 'material-symbols-outlined';
-            icon.textContent = 'warning';
-            icon.style.fontSize = '1.2rem';
-            statusDiv.appendChild(icon);
+    async function showFileInPreview(filePath) {
+        currentPreviewFile = filePath;
+        selPreviewFileName.textContent = filePath;
+        selectionPreview.classList.remove('hidden');
+        selPreviewLines.innerHTML = '<div class="code-line" style="padding:0.5rem;color:var(--text-secondary)">Загрузка...</div>';
+        selPreviewBar.classList.add('hidden');
+
+        const rootPath = projectPath.value.trim().replace(/\\/g, '/').replace(/\/+$/, '');
+        const fullPath = rootPath + '/' + filePath;
+
+        try {
+            const response = await fetch('/api/docs/project/read?path=' + encodeURIComponent(fullPath));
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                selPreviewLines.innerHTML = '<div class="code-line" style="padding:0.5rem;color:var(--status-error-text)">' + escHtml(err.error || 'Ошибка загрузки') + '</div>';
+                return;
+            }
+            const data = await response.json();
+            const lines = (data.content || '').split('\n');
+
+            mainToggle.checked = selections[filePath]?.isMain || false;
+
+            let html = '';
+            lines.forEach((line, idx) => {
+                const lineNo = idx + 1;
+                const sel = selections[filePath];
+                const selected = sel && lineNo >= sel.lineStart && lineNo <= sel.lineEnd;
+                let cls = 'code-line';
+                if (selected) {
+                    cls += sel.isMain ? ' line-selected-main' : ' line-selected-context';
+                }
+                html += `<div class="${cls}" data-lineno="${lineNo}">
+                    <span class="line-no">${lineNo}</span>
+                    <span class="line-code">${escHtml(line)}</span>
+                </div>`;
+            });
+            selPreviewLines.innerHTML = html;
+
+            selClickState = null;
+            updateSelPreviewBar(filePath);
+
+            selPreviewLines.querySelectorAll('.line-no').forEach(el => {
+                el.addEventListener('click', onLineNoClick);
+            });
+
+            selPreviewLines.querySelectorAll('.code-line').forEach(el => {
+                el.addEventListener('click', function(e) {
+                    if (e.target.closest('.line-no')) return;
+                });
+            });
+        } catch (err) {
+            selPreviewLines.innerHTML = '<div class="code-line" style="padding:0.5rem;color:var(--status-error-text)">Ошибка: ' + escHtml(err.message) + '</div>';
+        }
+    }
+
+    function onLineNoClick(e) {
+        const lineEl = e.target.closest('.line-no');
+        if (!lineEl) return;
+        const codeLine = lineEl.closest('.code-line');
+        const lineNo = parseInt(codeLine.dataset.lineno);
+        const filePath = currentPreviewFile;
+        if (!filePath || !selections[filePath]) return;
+
+        const sel = selections[filePath];
+
+        if (selClickState === null) {
+            sel.lineStart = lineNo;
+            sel.lineEnd = lineNo;
+            selClickState = { startLine: lineNo };
         } else {
-            const dot = document.createElement('span');
-            dot.className = 'dot-pulse';
-            statusDiv.appendChild(dot);
+            const start = selClickState.startLine;
+            sel.lineStart = Math.min(start, lineNo);
+            sel.lineEnd = Math.max(start, lineNo);
+            selClickState = null;
         }
-        statusDiv.appendChild(document.createTextNode(message));
-        statusDiv.className = `status ${type}`;
-        statusDiv.classList.remove('hidden');
-        if (type === 'error') {
-            setTimeout(() => statusDiv.classList.add('hidden'), 4000);
+
+        updateLineHighlights(filePath);
+        updateSelPreviewBar(filePath);
+        updateSelectionsSummary();
+    }
+
+    function updateLineHighlights(filePath) {
+        const sel = selections[filePath];
+        if (!sel) return;
+        selPreviewLines.querySelectorAll('.code-line').forEach(el => {
+            const lineNo = parseInt(el.dataset.lineno);
+            const selected = lineNo >= sel.lineStart && lineNo <= sel.lineEnd;
+            el.classList.remove('line-selected-main', 'line-selected-context');
+            if (selected) {
+                el.classList.add(sel.isMain ? 'line-selected-main' : 'line-selected-context');
+            }
+        });
+    }
+
+    function updateSelPreviewBar(filePath) {
+        const sel = selections[filePath];
+        if (!sel || sel.lineStart === sel.lineEnd) {
+            selPreviewBar.classList.add('hidden');
+            return;
+        }
+        selPreviewBar.classList.remove('hidden');
+        selRangeText.textContent = `Выбраны строки ${sel.lineStart}-${sel.lineEnd}`;
+    }
+
+    selClearBtn.addEventListener('click', () => {
+        const filePath = currentPreviewFile;
+        if (!filePath || !selections[filePath]) return;
+        const sel = selections[filePath];
+        sel.lineStart = 1;
+        sel.lineEnd = 1;
+        selClickState = null;
+        updateLineHighlights(filePath);
+        updateSelPreviewBar(filePath);
+    });
+
+    selPreviewClose.addEventListener('click', () => {
+        const filePath = currentPreviewFile;
+        if (filePath && selections[filePath]) {
+            delete selections[filePath];
+            fileTree.querySelectorAll('.file-checkbox').forEach(cb => {
+                if (cb.dataset.path === filePath) cb.checked = false;
+            });
+        }
+        hideSelectionPreview();
+        updateSelectionsSummary();
+        updateProjectActions();
+    });
+
+    mainToggle.addEventListener('change', () => {
+        const filePath = currentPreviewFile;
+        if (!filePath || !selections[filePath]) return;
+        const isMain = mainToggle.checked;
+        for (const path in selections) {
+            selections[path].isMain = false;
+        }
+        selections[filePath].isMain = isMain;
+        updateLineHighlights(filePath);
+        updateSelectionsSummary();
+    });
+
+    // === Selections summary ===
+    function updateSelectionsSummary() {
+        const keys = Object.keys(selections);
+        if (keys.length === 0) {
+            selectionsSummary.classList.add('hidden');
+            return;
+        }
+        selectionsSummary.classList.remove('hidden');
+        selectionsList.innerHTML = '';
+        for (const fp of keys) {
+            const sel = selections[fp];
+            const item = document.createElement('div');
+            item.className = 'selection-item';
+            const badge = document.createElement('span');
+            badge.className = 'selection-item-badge ' + (sel.isMain ? 'main' : 'context');
+            badge.textContent = sel.isMain ? 'Главный' : 'Контекст';
+            item.appendChild(badge);
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = `${sel.filePath} (строки ${sel.lineStart}-${sel.lineEnd})`;
+            item.appendChild(nameSpan);
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'selection-item-remove';
+            removeBtn.innerHTML = '<span class="material-symbols-outlined">close</span>';
+            removeBtn.title = 'Убрать';
+            removeBtn.addEventListener('click', () => {
+                delete selections[fp];
+                if (currentPreviewFile === fp) hideSelectionPreview();
+                syncCheckboxStates();
+                updateSelectionsSummary();
+                updateProjectActions();
+            });
+            item.appendChild(removeBtn);
+            selectionsList.appendChild(item);
         }
     }
 
-    function hideStatus() {
-        statusDiv.classList.add('hidden');
+    function updateProjectActions() {
+        const count = getSelectionsList().length;
+        projectActions.classList.toggle('hidden', count === 0);
     }
 
-    function hideResult() {
-        resultDiv.classList.add('hidden');
-        correctionDiv.classList.add('hidden');
-        versionBar.classList.add('hidden');
-        fileName.textContent = '';
+    // === Build prompt selections for API ===
+    function getSelectionsList() {
+        return Object.values(selections)
+            .filter(s => s.lineEnd > s.lineStart)
+            .map(s => ({
+                filePath: s.filePath,
+                lineStart: Math.min(s.lineStart, s.lineEnd),
+                lineEnd: Math.max(s.lineStart, s.lineEnd),
+                main: s.isMain
+            }));
     }
 
-    function showResult(text, vers, verIdx) {
-        docContent.textContent = text;
-        resultDiv.classList.remove('hidden');
-        versions = vers || [];
-        const idx = verIdx != null ? verIdx : (versions.length - 1);
-        renderVersions(versions, idx);
-        correctionDiv.classList.remove('hidden');
-        correctionInput.value = '';
-        correctBtn.disabled = false;
-        correctionInput.disabled = false;
+    function hasMainSelection() {
+        return getSelectionsList().some(s => s.main);
+    }
+
+    // === Preview prompt ===
+    previewPromptBtn.addEventListener('click', async () => {
+        const selList = getSelectionsList();
+        if (selList.length === 0) {
+            showStatus('Нет выбранных фрагментов кода', 'error');
+            return;
+        }
+        if (!hasMainSelection()) {
+            showStatus('Отметьте один фрагмент как главный (документируемый код)', 'error');
+            return;
+        }
+        const projectId = projectIdInput.value;
+        if (!projectId) {
+            showStatus('Сначала загрузите проект', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/docs/project/preview-prompt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ projectId, selections: selList })
+            });
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                showStatus(err.error || 'Ошибка предпросмотра', 'error');
+                return;
+            }
+            const data = await response.json();
+            promptPreviewContent.textContent = data.prompt || '(пустой промт)';
+            promptModal.classList.remove('hidden');
+        } catch (err) {
+            showStatus('Ошибка: ' + err.message, 'error');
+        }
+    });
+
+    promptModalClose.addEventListener('click', () => promptModal.classList.add('hidden'));
+    promptModal.addEventListener('click', (e) => {
+        if (e.target === promptModal) promptModal.classList.add('hidden');
+    });
+
+    // === Generate from selections ===
+    promptModalGenerateBtn.addEventListener('click', async () => {
+        promptModal.classList.add('hidden');
+        await doProjectGenerate();
+    });
+
+    async function doProjectGenerate() {
+        const selList = getSelectionsList();
+        if (selList.length === 0) {
+            showStatus('Нет выбранных фрагментов кода', 'error');
+            return;
+        }
+        if (!hasMainSelection()) {
+            showStatus('Отметьте один фрагмент как главный (документируемый код)', 'error');
+            return;
+        }
+        const projectId = projectIdInput.value;
+        if (!projectId) {
+            showStatus('Сначала загрузите проект', 'error');
+            return;
+        }
+
+        const templateCode = templateSelect.value;
+        const algorithmCode = algorithmCodeInput.value.trim();
+        const algorithmDescription = algorithmDescriptionInput.value.trim();
+        const algorithmLink = algorithmLinkInput.value.trim();
+        const authorities = authoritiesInput.value.trim();
+        const slaP95 = slaP95Input.value.trim();
+        const slaP99 = slaP99Input.value.trim();
+
+        _submitting = true;
+        setInputsDisabled(true);
+        hideResult();
+        showStatus('Генерация документации...', 'info');
+
         const chat = getActiveChat();
-        if (chat) {
-            chat.sourceCode = sourceCodeEl.value;
-            chat.templateCode = templateSelect.value;
-            chat.algorithmCode = algorithmCodeInput.value;
-            chat.algorithmDescription = algorithmDescriptionInput.value;
-            chat.algorithmLink = algorithmLinkInput.value;
-            chat.authorities = authoritiesInput.value;
-            chat.slaP95 = slaP95Input.value;
-            chat.slaP99 = slaP99Input.value;
-            chat.versions = versions;
-            chat.currentVersion = idx;
+        if (!chat) { showStatus('Нет активного чата', 'error'); setInputsDisabled(false); _submitting = false; return; }
+
+        const originChatId = chat.id;
+        _generatingChatId = originChatId;
+        abortController = new AbortController();
+
+        try {
+            const response = await fetch('/api/docs/project/generate-from-selections', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    projectId,
+                    selections: selList,
+                    templateCode,
+                    algorithmCode,
+                    algorithmDescription,
+                    algorithmLink,
+                    authorities,
+                    slaP95,
+                    slaP99
+                }),
+                signal: abortController.signal
+            });
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                if (activeChatId === originChatId) {
+                    showStatus(err.error || 'Ошибка генерации', 'error');
+                }
+                return;
+            }
+
+            const data = await response.json();
+            hideStatus();
+
+            const newChat = {
+                id: data.chatId,
+                name: getMainFileName() || 'project',
+                mode: 'project',
+                sourceCode: '',
+                templateCode: templateCode,
+                algorithmCode,
+                algorithmDescription,
+                algorithmLink,
+                authorities,
+                slaP95,
+                slaP99,
+                versions: data.versions || [],
+                currentVersion: data.versionIndex || 0
+            };
+            chats.push(newChat);
             saveState();
+            renderChatList();
+            if (activeChatId === originChatId) {
+                await switchChat(newChat.id);
+            }
+        } catch (err) {
+            if (err.name === 'AbortError') {
+                if (activeChatId === originChatId) {
+                    showStatus('Генерация прервана', 'info');
+                    setTimeout(hideStatus, 3000);
+                }
+            } else if (activeChatId === originChatId) {
+                showStatus('Ошибка: ' + err.message, 'error');
+            }
+        } finally {
+            setInputsDisabled(false);
+            _submitting = false;
+            _generatingChatId = null;
+            abortController = null;
         }
     }
 
-    let _submitting = false;
-    let _generatingChatId = null;
-    let abortController = null;
-
-    function setInputsDisabled(disabled) {
-        sourceCodeEl.disabled = disabled;
-        templateSelect.disabled = disabled;
-        correctionInput.disabled = disabled;
-        correctBtn.disabled = disabled;
-        fileBtn.disabled = disabled;
-        uploadFolderBtn.disabled = disabled;
-        generateBtn.disabled = disabled;
-        document.querySelectorAll('.file-checkbox').forEach(cb => cb.disabled = disabled);
-        document.querySelectorAll('.file-radio').forEach(rb => rb.disabled = disabled);
-        document.querySelectorAll('.tab').forEach(tab => tab.style.pointerEvents = disabled ? 'none' : '');
-        stopBtn.classList.toggle('hidden', !disabled);
+    function buildSimplePrompt() {
+        const main = sourceCodeEl.value.trim();
+        const ctx = contextCodeEl.value.trim();
+        let prompt = '';
+        if (main) {
+            prompt += '// === [ГЛАВНЫЙ] ===\n' + main + '\n';
+        }
+        if (ctx) {
+            prompt += '\n// === [КОНТЕКСТ] ===\n' + ctx + '\n';
+        }
+        return prompt || main;
     }
 
+    simplePreviewBtn.addEventListener('click', () => {
+        const main = sourceCodeEl.value.trim();
+        const ctx = contextCodeEl.value.trim();
+        if (!main && !ctx) {
+            showStatus('Введите код для документации', 'error');
+            return;
+        }
+        const prompt = buildSimplePrompt();
+        promptPreviewContent.textContent = prompt;
+        promptModalGenerateBtn.onclick = () => {
+            promptModal.classList.add('hidden');
+            doGenerate();
+        };
+        promptModal.classList.remove('hidden');
+    });
+
+    function getMainFileName() {
+        for (const fp in selections) {
+            if (selections[fp].isMain) {
+                return fp.includes('/') ? fp.substring(fp.lastIndexOf('/') + 1) : fp;
+            }
+        }
+        return 'project';
+    }
+
+    // === Simple mode file handling ===
     function readFile(file) {
         const ext = file.name.split('.').pop();
         const langMap = { java: 'Java', kt: 'Kotlin', groovy: 'Groovy', py: 'Python', js: 'JavaScript', ts: 'TypeScript', cs: 'C#', cpp: 'C++', c: 'C', h: 'C/C++ Header', rs: 'Rust', go: 'Go', swift: 'Swift' };
@@ -614,10 +901,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function doGenerate() {
         if (_submitting) return;
-        const sourceCode = sourceCodeEl.value.trim();
+        const sourceCode = buildSimplePrompt();
         const templateCode = templateSelect.value;
         if (!sourceCode) {
-            showStatus('Пожалуйста, введите исходный код', 'error');
+            showStatus('Введите код для документации', 'error');
             sourceCodeEl.classList.add('shake');
             setTimeout(() => sourceCodeEl.classList.remove('shake'), 500);
             return;
@@ -699,89 +986,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (_submitting) return;
         const chat = getActiveChat();
         if (chat && chat.mode === 'project') {
-            const primaryRb = document.querySelector('.file-radio:checked');
-            if (!primaryRb) {
-                showStatus('Выберите главный файл для документирования (радио-кнопка слева)', 'error');
-                return;
-            }
-            const contextCbs = document.querySelectorAll('.file-checkbox:checked');
-            if (contextCbs.length === 0) {
-                showStatus('Выберите файлы для контекста', 'error');
-                return;
-            }
-            const rootPath = projectPath.value.trim().replace(/\\/g, '/').replace(/\/+$/, '');
-            if (!rootPath) {
-                showStatus('Сначала загрузите папку с проектом', 'error');
-                return;
-            }
-
-            const primaryFile = rootPath + '/' + primaryRb.dataset.path;
-            const contextFiles = Array.from(contextCbs)
-                .map(cb => rootPath + '/' + cb.dataset.path)
-                .filter(f => f !== primaryFile);
-            const templateCode = templateSelect.value;
-
-            _submitting = true;
-            setInputsDisabled(true);
-            showStatus('Генерация документации...', 'info');
-
-            const originChatId = activeChatId;
-            _generatingChatId = originChatId;
-            abortController = new AbortController();
-
-            (async () => {
-                try {
-                    const response = await fetch('/api/docs/project/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ primaryFile, contextFiles, templateCode }),
-                        signal: abortController.signal
-                    });
-
-                    if (!response.ok) {
-                        const err = await response.json().catch(() => ({}));
-                        if (activeChatId === originChatId) {
-                            showStatus(err.error || 'Ошибка генерации', 'error');
-                        }
-                        return;
-                    }
-
-                    const data = await response.json();
-                    hideStatus();
-
-                    const newChat = {
-                        id: data.chatId,
-                        name: primaryRb.dataset.path.split('/').pop(),
-                        mode: 'project',
-                        sourceCode: '',
-                        templateCode: templateCode,
-                        versions: data.versions || [],
-                        currentVersion: data.versionIndex || 0
-                    };
-                    chats.push(newChat);
-                    saveState();
-                    renderChatList();
-                    if (activeChatId === originChatId) {
-                        await switchChat(newChat.id);
-                    }
-                    showStatus('Готово', 'info');
-                    setTimeout(hideStatus, 2000);
-                } catch (err) {
-                    if (err.name === 'AbortError') {
-                        if (activeChatId === originChatId) {
-                            showStatus('Генерация прервана', 'info');
-                            setTimeout(hideStatus, 3000);
-                        }
-                    } else if (activeChatId === originChatId) {
-                        showStatus('Ошибка: ' + err.message, 'error');
-                    }
-                } finally {
-                    setInputsDisabled(false);
-                    _submitting = false;
-                    _generatingChatId = null;
-                    abortController = null;
-                }
-            })();
+            doProjectGenerate();
         } else {
             doGenerate();
         }
@@ -871,7 +1076,7 @@ document.addEventListener('DOMContentLoaded', () => {
             abortController = null;
         }
     });
-    
+
     function renderPreview(html) {
         const styled = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
             body { font-family: 'Inter', sans-serif; padding: 1rem; color: #1f2937; line-height: 1.6; }
@@ -909,6 +1114,114 @@ document.addEventListener('DOMContentLoaded', () => {
         viewToggle.querySelector('.view-btn[data-view="code"]')?.click();
         _origShowResult(text, vers, verIdx);
     };
+
+    function renderVersions(vers, currentIdx) {
+        versionList.innerHTML = '';
+        if (!vers || vers.length === 0) {
+            versionBar.classList.add('hidden');
+            return;
+        }
+        versionBar.classList.remove('hidden');
+        vers.forEach((v, i) => {
+            const btn = document.createElement('button');
+            btn.className = `version-btn${i === currentIdx ? ' active' : ''}`;
+            btn.textContent = `v${i + 1}`;
+            btn.addEventListener('click', () => switchVersion(i));
+            versionList.appendChild(btn);
+        });
+    }
+
+    function switchVersion(idx) {
+        const chat = getActiveChat();
+        if (!chat || idx < 0 || idx >= versions.length) return;
+        chat.currentVersion = idx;
+        const content = versions[idx];
+        docContent.textContent = content;
+        if (previewMode) {
+            renderPreview(content);
+        }
+        renderVersions(versions, idx);
+        saveState();
+    }
+
+    function showStatus(message, type = 'info') {
+        statusDiv.innerHTML = '';
+        if (type === 'error') {
+            const icon = document.createElement('span');
+            icon.className = 'material-symbols-outlined';
+            icon.textContent = 'warning';
+            icon.style.fontSize = '1.2rem';
+            statusDiv.appendChild(icon);
+        } else {
+            const dot = document.createElement('span');
+            dot.className = 'dot-pulse';
+            statusDiv.appendChild(dot);
+        }
+        statusDiv.appendChild(document.createTextNode(message));
+        statusDiv.className = `status ${type}`;
+        statusDiv.classList.remove('hidden');
+        if (type === 'error') {
+            setTimeout(() => statusDiv.classList.add('hidden'), 4000);
+        }
+    }
+
+    function hideStatus() {
+        statusDiv.classList.add('hidden');
+    }
+
+    function hideResult() {
+        resultDiv.classList.add('hidden');
+        correctionDiv.classList.add('hidden');
+        versionBar.classList.add('hidden');
+        fileName.textContent = '';
+    }
+
+    function showResult(text, vers, verIdx) {
+        docContent.textContent = text;
+        resultDiv.classList.remove('hidden');
+        versions = vers || [];
+        const idx = verIdx != null ? verIdx : (versions.length - 1);
+        renderVersions(versions, idx);
+        correctionDiv.classList.remove('hidden');
+        correctionInput.value = '';
+        correctBtn.disabled = false;
+        correctionInput.disabled = false;
+        const chat = getActiveChat();
+        if (chat) {
+            chat.sourceCode = sourceCodeEl.value;
+            chat.contextCode = contextCodeEl.value;
+            chat.templateCode = templateSelect.value;
+            chat.algorithmCode = algorithmCodeInput.value;
+            chat.algorithmDescription = algorithmDescriptionInput.value;
+            chat.algorithmLink = algorithmLinkInput.value;
+            chat.authorities = authoritiesInput.value;
+            chat.slaP95 = slaP95Input.value;
+            chat.slaP99 = slaP99Input.value;
+            chat.versions = versions;
+            chat.currentVersion = idx;
+            saveState();
+        }
+    }
+
+    let _submitting = false;
+    let _generatingChatId = null;
+    let abortController = null;
+
+    function setInputsDisabled(disabled) {
+        sourceCodeEl.disabled = disabled;
+        contextCodeEl.disabled = disabled;
+        templateSelect.disabled = disabled;
+        correctionInput.disabled = disabled;
+        correctBtn.disabled = disabled;
+        fileBtn.disabled = disabled;
+        uploadFolderBtn.disabled = disabled;
+        generateBtn.disabled = disabled;
+        previewPromptBtn.disabled = disabled;
+        simplePreviewBtn.disabled = disabled;
+        document.querySelectorAll('.file-checkbox').forEach(cb => cb.disabled = disabled);
+        document.querySelectorAll('.tab').forEach(tab => tab.style.pointerEvents = disabled ? 'none' : '');
+        stopBtn.classList.toggle('hidden', !disabled);
+    }
 
     copyBtn.addEventListener('click', async () => {
         const text = docContent.textContent.trim();
@@ -1015,8 +1328,14 @@ document.addEventListener('DOMContentLoaded', () => {
             setInputsDisabled(false);
             correctionInput.value = '';
             projectPath.value = '';
-            const fileListEl = document.getElementById('projectFileList');
-            if (fileListEl) fileListEl.innerHTML = '';
+            projectIdInput.value = '';
+            selections = {};
+            projectFiles = [];
+            currentPreviewFile = null;
+            selClickState = null;
+            hideSelectionPreview();
+            selectionsSummary.classList.add('hidden');
+            projectActions.classList.add('hidden');
             document.querySelectorAll('.file-checkbox:checked').forEach(cb => cb.checked = false);
             createChat('Новый чат', mode);
         });
@@ -1080,7 +1399,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             console.log('[Project] Загружено, root:', data.root, 'файлов:', data.files.length);
             hideStatus();
+
+            selections = {};
+            projectFiles = [];
+            currentPreviewFile = null;
+            selClickState = null;
+            hideSelectionPreview();
+            selectionsSummary.classList.add('hidden');
+            projectActions.classList.add('hidden');
+
             projectPath.value = data.root;
+            projectIdInput.value = data.projectId;
+
+            // Wait for next tick to ensure DOM is ready, then send project path + scan
+            const projectRoot = data.root;
+            projectPath.value = projectRoot;
             renderFileTree(data.files);
         } catch (err) {
             console.error('[Project] Ошибка:', err);
@@ -1089,8 +1422,6 @@ document.addEventListener('DOMContentLoaded', () => {
             folderInput.value = '';
         }
     });
-
-
 
     async function init() {
         const hasSaved = loadState();
