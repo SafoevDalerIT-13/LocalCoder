@@ -1,32 +1,27 @@
-# Local Documentation Helper
+# Local Docs Generator
 
-**Локальный сервис для автоматической генерации технической документации** в формате Confluence Storage Format (XHTML) с использованием LLM.
+**Локальный сервис генерации технической документации** в формате Confluence Storage Format (XHTML) через LLM.
 
-Работает полностью офлайн — все данные обрабатываются на локальной машине через Ollama. Никакой интернет не требуется (NDA-friendly).
+Работает полностью офлайн — всё на локальной машине через Ollama. NDA-friendly, интернет не требуется.
 
 ---
 
 ## Возможности
 
-- **Генерация документации** — анализирует исходный код (Java, Kotlin, Python, JS и др.) и формирует структурированную XHTML-документацию
-- **4 встроенных шаблона** — 200 (вход/выход/алгоритм), 325 (модуль), 211 (метод + DTO), 230 (архитектура)
-- **Корректировка** — после генерации можно попросить модель исправить конкретные разделы
-- **Управление версиями** — каждый результат сохраняется как версия, можно переключаться между ними
-- **Проектный режим** — загрузите папку проекта, выберите файлы и сгенерируйте документацию разом
-- **Просмотр файлов** — кликните по файлу в дереве проекта для просмотра исходного кода
-- **Проектный чат** — выберите файлы и дайте модели произвольную инструкцию
-- **Drag-and-drop** — перетащите файл в поле ввода кода
-- **Тёмная / светлая тема** — переключается и сохраняется
-- **Копирование в буфер** — результат копируется в XHTML
-- **Предпросмотр** — переключение между кодом и визуальным предпросмотром документации
-- **История чатов** — чаты сохраняются, можно переименовывать и удалять
-- **Режим чата** — при создании выбирается «Обычный» (один файл) или «Проект» (папка с файлами)
+- **Генерация документации** — анализирует исходный код и формирует структурированную XHTML-документацию
+- **2 формата** — 211 (вход/выход/ошибки) и 230 (архитектура/алгоритм)
+- **Корректировка** — после генерации можно поправить конкретные разделы через чат
+- **Версионирование** — каждая генерация/коррекция создаёт версию, можно переключаться
+- **Проектный режим** — загрузите папку, выберите файлы и фрагменты кода, сгенерируйте документацию
+- **Экспорт** — HTML, PDF, DOCX, Markdown
+- **Drag-and-drop** — перетащите файлы в поля ввода кода и контекста
+- **Тёмная / светлая тема**
+- **i18n** — русский / английский интерфейс
+- **Sidebar с чатами** — закрепление, переименование, удаление с подтверждением
+- **Отмена генерации** — stop-кнопка прерывает запрос к LLM
+- **Модальные окна** — с анимацией открытия/закрытия
 
 ---
-
-## Скриншот
-
-![welcome]
 
 ## Стек
 
@@ -34,14 +29,15 @@
 |-----------|------------|
 | **Язык** | Java 17 |
 | **Фреймворк** | Spring Boot 3.3.5, Spring AI 1.0.0-M5 |
-| **База данных** | H2 (file-based) |
+| **База данных** | PostgreSQL 16 |
 | **ORM** | Spring Data JPA / Hibernate |
-| **Фронтенд** | HTML5, CSS3 (Vanilla), JavaScript (Vanilla) |
+| **Фронтенд** | React 18 (основной) + Vanilla JS (static/) |
+| **Стили** | CSS3 (CSS-переменные для темы) |
 | **Иконки** | Material Symbols |
-| **Шрифты** | Inter, Manrope, Fira Code |
-| **LLM** | Ollama (qwen2.5-coder / deepseek-coder и др.) |
+| **LLM** | Ollama (qwen2.5-coder, deepseek-coder и др.) |
 | **Контейнеризация** | Docker, Docker Compose |
 | **Swagger** | SpringDoc OpenAPI 2.6.0 |
+| **Сборка** | Maven 3.9+ |
 
 ---
 
@@ -49,41 +45,33 @@
 
 ### Требования
 
-- **Docker** и **Docker Compose** (для запуска в контейнерах)
-- Или **Java 17 + Maven 3.9+** + **Ollama** на хосте (для локального запуска)
+- **Docker** и **Docker Compose** (рекомендуется)
+- Или **Java 17+**, **Maven 3.9+**, **Ollama** на хосте, **PostgreSQL 16**
 
-### Запуск через Docker Compose (рекомендуется)
+### 1. Docker Compose (рекомендуется)
 
 ```bash
 docker compose up -d
 ```
 
-Команда запустит три контейнера:
+Запускает PostgreSQL 16 и приложение. Ollama предполагается на хосте (`host.docker.internal:11434`).
 
-| Контейнер | Назначение |
-|-----------|------------|
-| `ollama` | LLM-сервер |
-| `model-puller` | Скачивает модель (выполняется один раз) |
-| `app` | Само приложение |
+**Веб-интерфейс:** http://localhost:8080  
+**Swagger UI:** http://localhost:8080/swagger-ui/index.html
 
-После запуска:
-
-- **Веб-интерфейс**: http://localhost:8080
-- **Swagger UI**: http://localhost:8080/swagger-ui/index.html
-- **H2 Console**: http://localhost:8080/h2-console (только в `local` профиле)
-
-> **Важно**: при первом запуске `model-puller` скачивает модель (1.8–9 ГБ). Дождитесь завершения перед работой.
-
-### Локальный запуск
+### 2. Локальный запуск
 
 ```bash
-# 1. Соберите проект
+# PostgreSQL
+docker compose up -d postgres
+
+# Сборка
 mvn clean package -DskipTests
 
-# 2. Убедитесь, что Ollama запущен на localhost:11434 и модель скачана
+# Убедитесь, что Ollama запущен
 ollama pull qwen2.5-coder:3b
 
-# 3. Запустите приложение
+# Запуск
 mvn spring-boot:run
 # или
 java -jar target/local-docs-generator-0.0.1-SNAPSHOT.jar
@@ -93,67 +81,76 @@ java -jar target/local-docs-generator-0.0.1-SNAPSHOT.jar
 
 ## Конфигурация
 
-### Переменные окружения (Docker)
+### Переменные окружения
 
 | Переменная | По умолчанию | Описание |
 |------------|--------------|----------|
-| `OLLAMA_URL` | `http://ollama:11434` | Адрес Ollama |
+| `OLLAMA_URL` | `http://localhost:11434` | Адрес Ollama |
 | `OLLAMA_MODEL` | `qwen2.5-coder:3b` | Модель для генерации |
-| `H2_URL` | `jdbc:h2:file:./data/localcoder` | Путь к БД |
-| `DB_USER` | `safoev` | Пользователь БД |
-| `DB_PASSWORD` | `233122` | Пароль БД |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/localcoder` | JDBC URL PostgreSQL |
+| `DB_USERNAME` | `localcoder` | Пользователь БД |
+| `DB_PASSWORD` | `localcoder` | Пароль БД |
 
-### Модели
+### Профили Spring Boot
+
+| Профиль | Файл | Назначение |
+|---------|------|------------|
+| (default) | `application.yml` | PostgreSQL (локально или Docker) |
+| `local` | `application-local.yml` | Локальная разработка (PostgreSQL) |
+| `docker` | `application-docker.yml` | Docker-окружение |
+
+### Рекомендуемые LLM-модели
 
 | Модель | Размер | ОЗУ | Скорость | Качество |
 |--------|--------|-----|----------|----------|
 | `qwen2.5-coder:3b` | 1.8 ГБ | ~2.5 ГБ | Быстро | Среднее |
+| `qwen2.5-coder:7b` | 4.5 ГБ | ~6 ГБ | Средне | Хорошее |
 | `deepseek-coder-v2:16b` | 9.2 ГБ | ~10 ГБ | Медленно | Высокое |
 
-Модель меняется в `docker-compose.yml` (секция `model-puller`) или через переменную `OLLAMA_MODEL`.
-
-### Профили
-
-| Профиль | Файл | Назначение |
-|---------|------|------------|
-| `local` (по умолчанию) | `application-local.yml` | Локальная разработка |
-| `docker` | `application-docker.yml` | Запуск в Docker |
+Модель меняется через `OLLAMA_MODEL` в `docker-compose.yml` или переменную окружения.
 
 ---
 
-## Шаблоны документации
+## API endpoints
 
-Приложение включает 4 встроенных шаблона, которые загружаются в БД при старте:
-
-| Код | Назначение | Разделы |
-|-----|-----------|---------|
-| **200** | Класс / модуль | Входные данные, выходные данные, алгоритм работы, пример |
-| **325** | Модуль / сервис | Назначение, классы и методы, поток данных, исключения, пример |
-| **211** | Метод + DTO | Сигнатура, поля DTO (с вложенностью), ошибки |
-| **230** | Архитектура | Общие сведения, алгоритм по методам, последовательность вызовов |
-
-Шаблоны можно расширять или менять в YAML-файлах конфигурации.
-
----
-
-## REST API
+### Чаты
 
 | Метод | Путь | Описание |
 |-------|------|----------|
 | `POST` | `/api/docs/chat` | Создать чат |
-| `DELETE` | `/api/docs/chat/{id}` | Удалить чат |
+| `DELETE` | `/api/docs/chat/{id}` | Удалить чат (каскадно — сообщения + проект) |
 | `PUT` | `/api/docs/chat/{id}/rename` | Переименовать чат |
-| `POST` | `/api/docs/generate` | Сгенерировать документацию |
-| `POST` | `/api/docs/correct` | Исправить документацию |
-| `GET` | `/api/docs/chat/{id}/versions` | Список версий |
+| `PUT` | `/api/docs/chat/{id}/state` | Сохранить frontendState (пин, sourceCode, projectId и т.д.) |
+| `GET` | `/api/docs/chats` | Список всех чатов |
+| `GET` | `/api/docs/chat/{id}/versions` | Список версий документа |
 | `GET` | `/api/docs/chat/{id}/version/{n}` | Конкретная версия |
-| `GET` | `/api/docs/templates` | Список шаблонов |
-| `POST` | `/api/docs/project/scan` | Сканировать директорию |
-| `POST` | `/api/docs/project/generate` | Пакетная генерация |
-| `POST` | `/api/docs/project/chat` | Проектный чат |
-| `GET` | `/api/docs/project/read` | Прочитать файл |
 
-Полная документация API доступна в Swagger UI: http://localhost:8080/swagger-ui/index.html
+### Генерация
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `POST` | `/api/docs/generate` | Сгенерировать документацию |
+| `POST` | `/api/docs/correct` | Исправить существующую |
+| `POST` | `/api/docs/generate/cancel/{chatId}` | Отменить генерацию |
+
+### Проекты
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `POST` | `/api/docs/project/upload` | Загрузить проект (файлы хранятся в БД) |
+| `POST` | `/api/docs/project/scan` | Сканировать директорию на диске |
+| `GET` | `/api/docs/project/{id}` | Получить проект с файлами |
+| `DELETE` | `/api/docs/project/{id}` | Удалить проект |
+| `GET` | `/api/docs/project/read` | Прочитать содержимое файла из проекта |
+| `POST` | `/api/docs/project/preview-prompt` | Предпросмотр промта |
+| `POST` | `/api/docs/project/generate-from-selections` | Генерация по выбранным фрагментам |
+
+### Экспорт
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/docs/export/{chatId}/{versionIndex}?format=html` | Экспорт (html/pdf/docx/md) |
+| `GET` | `/api/docs/templates` | Список шаблонов |
 
 ---
 
@@ -161,42 +158,55 @@ java -jar target/local-docs-generator-0.0.1-SNAPSHOT.jar
 
 ```
 ├── src/main/java/com/localdoc/
-│   ├── LocalCoderApplication.java      # Точка входа
-│   ├── config/                          # Конфигурация Spring, OpenAPI, шаблонов
-│   ├── controller/                      # REST-контроллеры
-│   ├── dto/                             # DTO (request/response)
-│   ├── entity/                          # JPA-сущности
-│   ├── exception/                       # Обработка ошибок
-│   ├── repository/                      # Spring Data JPA репозитории
-│   └── service/                         # Бизнес-логика
+│   ├── LocalCoderApplication.java
+│   ├── config/                     # Spring-конфигурация, OpenAPI
+│   ├── controller/                 # REST-контроллеры
+│   ├── dto/                        # DTO (request/response)
+│   ├── entity/                     # JPA-сущности (Chat, Message, Project, ProjectFile, Template)
+│   ├── exception/                  # Обработка ошибок
+│   ├── model/docstructure/         # Модели структуры документа (211, 230)
+│   ├── repository/                 # Spring Data JPA репозитории
+│   └── service/                    # Бизнес-логика
 ├── src/main/resources/
-│   ├── application-local.yml            # Конфигурация для локального запуска
-│   ├── application-docker.yml           # Конфигурация для Docker
-│   └── static/
-│       ├── index.html                   # SPA-фронтенд
-│       ├── styles.css                   # Стили (темная/светлая тема)
-│       └── script.js                    # Вся логика фронтенда
-├── Dockerfile                           # Многостадийная сборка
-├── docker-compose.yml                   # Оркестрация
-└── pom.xml                              # Maven-дескриптор
+│   ├── application.yml             # Конфигурация по умолчанию (PostgreSQL)
+│   ├── application-local.yml       # Локальная разработка
+│   ├── application-docker.yml      # Docker-окружение
+│   └── static/                     # Vanilla JS-фронтенд (альтернатива React)
+├── docker-compose.yml              # PostgreSQL + опционально приложение
+├── Dockerfile
+└── pom.xml
 ```
+
+Фронтенд на React находится в отдельном репозитории.
 
 ---
 
 ## Разработка
 
 ```bash
-# Сборка без тестов
+# PostgreSQL
+docker compose up -d postgres
+
+# Сборка
 mvn clean package -DskipTests
 
-# Сборка с тестами
-mvn clean package
-
-# Запуск в режиме разработки
+# Запуск в dev-режиме
 mvn spring-boot:run -Dspring-boot.run.profiles=local
+
+# Линтер (проверка кода)
+mvn checkstyle:check
 ```
 
-При разработке используется H2 file-based БД (сохраняется в `./data/`). Для отладки доступна H2 Console: http://localhost:8080/h2-console.
+---
+
+## Шаблоны документации
+
+| Код | Назначение | Разделы |
+|-----|-----------|---------|
+| **211** | Метод + DTO | Входные данные (с развёрнутыми DTO), выходные данные, ошибки |
+| **230** | Архитектура / алгоритм | Общие сведения, алгоритм по методам, последовательность вызовов |
+
+Шаблоны задаются в YAML-конфигурации (`docs.templates`) и при старте загружаются в БД.
 
 ---
 
