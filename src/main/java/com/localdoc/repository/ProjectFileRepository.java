@@ -13,4 +13,6 @@ public interface ProjectFileRepository extends JpaRepository<ProjectFileEntity, 
     List<ProjectFileEntity> findByProjectIdOrderByRelativePath(UUID projectId);
 
     ProjectFileEntity findByProjectIdAndRelativePath(UUID projectId, String relativePath);
+
+    void deleteByProjectId(UUID projectId);
 }

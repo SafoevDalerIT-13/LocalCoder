@@ -1,11 +1,16 @@
 package com.localdoc.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.localdoc.entity.ChatEntity;
 import com.localdoc.entity.MessageEntity;
+import com.localdoc.entity.ProjectEntity;
 import com.localdoc.exception.InvalidRequestException;
 import com.localdoc.repository.ChatSessionRepository;
 import com.localdoc.repository.MessageRepository;
+import com.localdoc.repository.ProjectFileRepository;
+import com.localdoc.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.stereotype.Service;
@@ -17,9 +22,13 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ChatSessionManager {
     private final ChatSessionRepository chatSessionRepository;
     private final MessageRepository messageRepository;
+    private final ProjectRepository projectRepository;
+    private final ProjectFileRepository projectFileRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public ChatEntity createChat(String name, String mode) {
@@ -31,10 +40,14 @@ public class ChatSessionManager {
 
     @Transactional
     public void deleteChat(UUID chatId) {
-        if (!chatSessionRepository.existsById(chatId)) {
-            throw new InvalidRequestException("Чат не найден: " + chatId);
+        ChatEntity chat = chatSessionRepository.findById(chatId)
+                .orElseThrow(() -> new InvalidRequestException("Чат не найден: " + chatId));
+        ProjectEntity project = chat.getProject();
+        chatSessionRepository.delete(chat);
+        if (project != null) {
+            projectFileRepository.deleteByProjectId(project.getId());
+            projectRepository.delete(project);
         }
-        chatSessionRepository.deleteById(chatId);
     }
 
     public List<ChatEntity> listChats() {
@@ -46,7 +59,24 @@ public class ChatSessionManager {
         ChatEntity chat = chatSessionRepository.findById(chatId)
                 .orElseThrow(() -> new InvalidRequestException("Чат не найден: " + chatId));
         chat.setFrontendState(frontendState);
+        syncProjectFromState(chat, frontendState);
         chatSessionRepository.save(chat);
+    }
+
+    private void syncProjectFromState(ChatEntity chat, String frontendState) {
+        try {
+            var node = objectMapper.readTree(frontendState);
+            var pid = node.get("projectId");
+            if (pid != null && !pid.asText().isBlank()) {
+                UUID projectId = UUID.fromString(pid.asText());
+                ProjectEntity project = projectRepository.findById(projectId).orElse(null);
+                chat.setProject(project);
+            } else {
+                chat.setProject(null);
+            }
+        } catch (Exception e) {
+            log.warn("Не удалось синхронизировать project из frontendState: {}", e.getMessage());
+        }
     }
 
     @Transactional
