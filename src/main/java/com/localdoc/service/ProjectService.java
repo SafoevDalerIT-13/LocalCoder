@@ -2,24 +2,32 @@ package com.localdoc.service;
 
 import com.localdoc.dto.request.CodeSelection;
 import com.localdoc.entity.ChatEntity;
+import com.localdoc.entity.ProjectEntity;
+import com.localdoc.entity.ProjectFileEntity;
+import com.localdoc.exception.InvalidRequestException;
+import com.localdoc.repository.ProjectFileRepository;
+import com.localdoc.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class ProjectService {
 
+    private final ProjectRepository projectRepository;
+    private final ProjectFileRepository projectFileRepository;
     private final ChatSessionManager sessionManager;
     private final DocumentationService documentationService;
 
@@ -40,55 +48,95 @@ public class ProjectService {
         return files;
     }
 
-    public String readFileContent(String filePath) throws IOException {
-        Path path = Paths.get(filePath).toAbsolutePath().normalize();
-        if (!Files.isRegularFile(path)) {
-            throw new IllegalArgumentException("Файл не найден: " + filePath);
-        }
-        return Files.readString(path);
-    }
-
-    public UploadResult uploadProject(List<UploadedFile> uploadedFiles) throws IOException {
-        String projectId = UUID.randomUUID().toString();
-        Path projectDir = Path.of("./uploaded", projectId).toAbsolutePath().normalize();
-        Files.createDirectories(projectDir);
+    @Transactional
+    public UploadResult uploadProject(String projectName, List<UploadedFile> uploadedFiles) throws IOException {
+        ProjectEntity project = new ProjectEntity();
+        project.setName(projectName != null && !projectName.isBlank() ? projectName : "project");
+        project.setProjectPath(null);
+        project = projectRepository.save(project);
 
         for (UploadedFile f : uploadedFiles) {
-            Path target = projectDir.resolve(f.path()).normalize();
-            if (!target.startsWith(projectDir)) continue;
-            Files.createDirectories(target.getParent());
-            Files.writeString(target, f.content());
+            ProjectFileEntity fileEntity = new ProjectFileEntity();
+            fileEntity.setProject(project);
+            fileEntity.setRelativePath(f.path());
+            String fileName = f.path().contains("/") ? f.path().substring(f.path().lastIndexOf('/') + 1) : f.path();
+            fileEntity.setFileName(fileName);
+            String sanitized = f.content() != null ? f.content().replace("\u0000", "") : "";
+            fileEntity.setContent(sanitized);
+            projectFileRepository.save(fileEntity);
         }
 
-        List<FileInfo> files = scanDirectory(projectDir.toString());
-        return new UploadResult(projectId, projectDir.toString().replace("\\", "/"), files);
+        List<FileInfo> files = projectFileRepository.findByProjectIdOrderByRelativePath(project.getId()).stream()
+                .map(f -> new FileInfo(f.getRelativePath(), f.getContent() != null ? (long) f.getContent().length() : 0L))
+                .toList();
+
+        return new UploadResult(project.getId().toString(), project.getName(), files);
     }
 
-    public String buildPromptFromSelections(String projectId, List<CodeSelection> selections) throws IOException {
-        Path projectDir = Path.of("./uploaded", projectId).toAbsolutePath().normalize();
-        if (!Files.isDirectory(projectDir)) {
-            throw new IllegalArgumentException("Проект не найден: " + projectId);
+    @Transactional(readOnly = true)
+    public String readFileContent(UUID projectId, String relativePath) throws IOException {
+        ProjectFileEntity file = projectFileRepository.findByProjectIdAndRelativePath(projectId, relativePath);
+        if (file == null) {
+            throw new IllegalArgumentException("Файл не найден в проекте: " + relativePath);
         }
+        return file.getContent();
+    }
 
+    @Transactional(readOnly = true)
+    public String readFileContent(String projectId, String relativePath) throws IOException {
+        return readFileContent(UUID.fromString(projectId), relativePath);
+    }
+
+    @Transactional(readOnly = true)
+    public String readFileById(UUID fileId) {
+        ProjectFileEntity file = projectFileRepository.findById(fileId)
+                .orElseThrow(() -> new InvalidRequestException("Файл не найден: " + fileId));
+        return file.getContent();
+    }
+
+    @Transactional(readOnly = true)
+    public ProjectResult getProject(UUID projectId) {
+        ProjectEntity project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new InvalidRequestException("Проект не найден: " + projectId));
+        List<FileInfo> files = projectFileRepository.findByProjectIdOrderByRelativePath(projectId).stream()
+                .map(f -> new FileInfo(f.getRelativePath(), f.getContent() != null ? (long) f.getContent().length() : 0L))
+                .toList();
+        return new ProjectResult(project.getId().toString(), project.getName(), project.getProjectPath(), files);
+    }
+
+    @Transactional
+    public void deleteProject(UUID projectId) {
+        if (!projectRepository.existsById(projectId)) {
+            throw new InvalidRequestException("Проект не найден: " + projectId);
+        }
+        projectRepository.deleteById(projectId);
+    }
+
+    @Transactional(readOnly = true)
+    public String buildPromptFromSelections(String projectId, List<CodeSelection> selections) throws IOException {
+        UUID pid = UUID.fromString(projectId);
         StringBuilder prompt = new StringBuilder();
 
         for (CodeSelection sel : selections) {
-            appendSelection(prompt, projectDir, sel);
+            appendSelection(prompt, pid, sel);
         }
 
         return prompt.toString();
     }
 
-    private void appendSelection(StringBuilder sb, Path projectDir, CodeSelection sel) throws IOException {
-        Path file = projectDir.resolve(sel.getFilePath()).normalize();
-        if (!file.startsWith(projectDir) || !Files.isRegularFile(file)) {
+    private void appendSelection(StringBuilder sb, UUID projectId, CodeSelection sel) throws IOException {
+        ProjectFileEntity file = projectFileRepository.findByProjectIdAndRelativePath(projectId, sel.getFilePath());
+        if (file == null) {
             log.warn("Файл не найден: {}", sel.getFilePath());
             return;
         }
 
-        List<String> allLines = Files.readAllLines(file);
+        String content = file.getContent();
+        if (content == null) return;
+
+        String[] allLines = content.split("\n", -1);
         int start = Math.max(1, sel.getLineStart());
-        int end = Math.min(allLines.size(), sel.getLineEnd());
+        int end = Math.min(allLines.length, sel.getLineEnd());
         if (start > end) return;
 
         String label = sel.isMain() ? "ГЛАВНЫЙ" : "КОНТЕКСТ";
@@ -96,11 +144,12 @@ public class ProjectService {
                 .append(sel.getFilePath()).append(" (строки ").append(start).append("-").append(end).append(") ===\n");
 
         for (int i = start - 1; i < end; i++) {
-            sb.append(allLines.get(i)).append("\n");
+            sb.append(allLines[i]).append("\n");
         }
         sb.append("\n");
     }
 
+    @Transactional
     public ChatResult generateFromSelections(String projectId, List<CodeSelection> selections,
                                               String templateCode,
                                               String algorithmCode, String algorithmDescription, String algorithmLink,
@@ -118,7 +167,7 @@ public class ProjectService {
 
         ChatEntity chat = sessionManager.createChat(mainFileName, "project");
         UUID chatId = chat.getId();
-        sessionManager.addMessage(chatId, new UserMessage(promptText));
+        sessionManager.addMessage(chatId, new org.springframework.ai.chat.messages.UserMessage(promptText));
 
         String doc = documentationService.generateDocumentation(chatId, promptText,
                 templateCode != null ? templateCode : "230",
@@ -126,7 +175,7 @@ public class ProjectService {
                 authorities, slaP95, slaP99);
 
         if (doc != null) {
-            sessionManager.addMessage(chatId, new AssistantMessage(doc));
+            sessionManager.addMessage(chatId, new org.springframework.ai.chat.messages.AssistantMessage(doc));
         }
 
         List<String> versions = sessionManager.getAssistantMessages(chatId);
@@ -136,5 +185,6 @@ public class ProjectService {
     public record UploadedFile(String path, String content) {}
     public record UploadResult(String projectId, String root, List<FileInfo> files) {}
     public record FileInfo(String path, long size) {}
+    public record ProjectResult(String projectId, String name, String projectPath, List<FileInfo> files) {}
     public record ChatResult(String chatId, String documentation, List<String> versions, int versionIndex) {}
 }

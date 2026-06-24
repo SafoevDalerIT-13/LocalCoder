@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/docs/project")
@@ -35,21 +36,67 @@ public class ProjectController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<?> upload(@RequestBody List<Map<String, String>> uploadedFiles) {
-        if (uploadedFiles == null || uploadedFiles.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Нет файлов"));
-        }
-        log.info("Загрузка проекта: {} файлов", uploadedFiles.size());
+    public ResponseEntity<?> upload(@RequestBody Object body) {
         try {
+            String projectName = null;
+            List<Map<String, String>> uploadedFiles;
+
+            if (body instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, String>> list = (List<Map<String, String>>) body;
+                uploadedFiles = list;
+            } else if (body instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> map = (Map<String, Object>) body;
+                projectName = (String) map.get("name");
+                @SuppressWarnings("unchecked")
+                List<Map<String, String>> files = (List<Map<String, String>>) map.get("files");
+                uploadedFiles = files;
+            } else {
+                return ResponseEntity.badRequest().body(Map.of("error", "Неверный формат запроса"));
+            }
+
+            if (uploadedFiles == null || uploadedFiles.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Нет файлов"));
+            }
+            if (projectName == null || projectName.isBlank()) {
+                projectName = uploadedFiles.stream()
+                        .map(m -> m.get("path"))
+                        .filter(p -> p != null && p.contains("/"))
+                        .findFirst()
+                        .map(p -> p.substring(0, p.indexOf('/')))
+                        .orElse("project");
+            }
+            log.info("Загрузка проекта: {} файлов, name={}", uploadedFiles.size(), projectName);
             List<ProjectService.UploadedFile> files = uploadedFiles.stream()
                     .map(m -> new ProjectService.UploadedFile(m.get("path"), m.get("content")))
                     .toList();
-            ProjectService.UploadResult result = projectService.uploadProject(files);
+            ProjectService.UploadResult result = projectService.uploadProject(projectName, files);
             log.info("Проект загружен: projectId={}, root={}, файлов={}",
                     result.projectId(), result.root(), result.files().size());
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Ошибка загрузки проекта: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{projectId}")
+    public ResponseEntity<?> getProject(@PathVariable UUID projectId) {
+        try {
+            ProjectService.ProjectResult result = projectService.getProject(projectId);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{projectId}")
+    public ResponseEntity<?> deleteProject(@PathVariable UUID projectId) {
+        try {
+            projectService.deleteProject(projectId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -90,14 +137,10 @@ public class ProjectController {
     }
 
     @GetMapping("/read")
-    public ResponseEntity<?> readFile(@RequestParam String path) {
-        log.debug("Чтение файла: {}", path);
-        if (path == null || path.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Путь обязателен"));
-        }
+    public ResponseEntity<?> readFile(@RequestParam String projectId, @RequestParam String path) {
+        log.debug("Чтение файла из проекта: projectId={}, path={}", projectId, path);
         try {
-            String content = projectService.readFileContent(path);
-            log.debug("Файл прочитан: {} символов", content.length());
+            String content = projectService.readFileContent(projectId, path);
             return ResponseEntity.ok(Map.of("content", content));
         } catch (Exception e) {
             log.error("Ошибка чтения файла {}: {}", path, e.getMessage());

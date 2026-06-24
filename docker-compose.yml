@@ -1,6 +1,24 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: localcoder-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: localcoder
+      POSTGRES_USER: localcoder
+      POSTGRES_PASSWORD: localcoder
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U localcoder -d localcoder" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   ollama:
     image: ollama/ollama:latest
     container_name: local-coder-ollama
@@ -60,3 +78,4 @@ services:
 
 volumes:
   ollama_data:
+  postgres_data:
