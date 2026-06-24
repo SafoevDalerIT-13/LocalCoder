@@ -37,6 +37,18 @@ public class ChatSessionManager {
         chatSessionRepository.deleteById(chatId);
     }
 
+    public List<ChatEntity> listChats() {
+        return chatSessionRepository.findAll();
+    }
+
+    @Transactional
+    public void updateChatState(UUID chatId, String frontendState) {
+        ChatEntity chat = chatSessionRepository.findById(chatId)
+                .orElseThrow(() -> new InvalidRequestException("Чат не найден: " + chatId));
+        chat.setFrontendState(frontendState);
+        chatSessionRepository.save(chat);
+    }
+
     @Transactional
     public void renameChat(UUID chatId, String newName) {
         ChatEntity chat = chatSessionRepository.findById(chatId)

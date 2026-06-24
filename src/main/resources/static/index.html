@@ -39,10 +39,18 @@
                     <p class="subtitle">Локальная LLM — Confluence Helper</p>
                 </div>
             </div>
+            <div class="header-actions">
+            <button id="helpBtn" class="theme-toggle" aria-label="Инструкция">
+                <span class="material-symbols-outlined">help_outline</span>
+            </button>
+            <button id="settingsBtn" class="theme-toggle" aria-label="Настройки">
+                <span class="material-symbols-outlined">settings</span>
+            </button>
             <button id="theme-toggle" class="theme-toggle" aria-label="Переключить тему">
                 <span class="material-symbols-outlined dark-icon">dark_mode</span>
                 <span class="material-symbols-outlined light-icon" style="display: none;">light_mode</span>
             </button>
+            </div>
         </div>
 
         <div id="welcomeScreen" class="welcome-screen">
@@ -90,18 +98,34 @@
                             <span class="drop-hint">.java, .kt, .py, .js и другие</span>
                         </div>
                     </div>
+                    <div id="mainFileChips" class="file-chips"></div>
                     <div class="file-input-row">
                         <button type="button" id="fileBtn" class="file-btn">
                             <span class="material-symbols-outlined">attach_file</span>
                             <span>Выбрать файл</span>
                         </button>
                         <span id="fileName" class="file-name"></span>
-                        <input type="file" id="fileInput" accept=".java,.kt,.groovy,.py,.js,.ts,.cs,.cpp,.c,.h,.rs,.go,.swift,.kt,.kts" hidden>
+                        <input type="file" id="fileInput" accept=".java,.kt,.groovy,.py,.js,.ts,.cs,.cpp,.c,.h,.rs,.go,.swift,.kt,.kts" hidden multiple>
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="contextCode">Контекст (DTO, зависимости — не документируются)</label>
-                    <textarea id="contextCode" rows="6" placeholder="Код зависимостей, DTO, утилит — для понимания модели..."></textarea>
+                    <div class="drop-zone" id="ctxDropZone">
+                        <textarea id="contextCode" rows="6" placeholder="Код зависимостей, DTO, утилит — для понимания модели..."></textarea>
+                        <div class="drop-overlay" id="ctxDropOverlay">
+                            <span class="material-symbols-outlined drop-icon">upload_file</span>
+                            <span class="drop-text">Перетащите файл сюда</span>
+                            <span class="drop-hint">.java, .kt, .py, .js и другие</span>
+                        </div>
+                    </div>
+                    <div id="ctxFileChips" class="file-chips"></div>
+                    <div class="file-input-row">
+                        <button type="button" id="ctxFileBtn" class="file-btn">
+                            <span class="material-symbols-outlined">attach_file</span>
+                            <span>Выбрать файл</span>
+                        </button>
+                        <input type="file" id="ctxFileInput" accept=".java,.kt,.groovy,.py,.js,.ts,.cs,.cpp,.c,.h,.rs,.go,.swift,.kt,.kts" hidden multiple>
+                    </div>
                 </div>
                 <div class="simple-actions">
                     <button type="button" id="simplePreviewBtn" class="preview-prompt-btn">
@@ -281,6 +305,64 @@
             </button>
         </div>
         <button class="modal-close-btn" id="modalCloseBtn">Отмена</button>
+    </div>
+</div>
+
+<div id="instructionsModal" class="modal-overlay hidden">
+    <div class="modal modal-wide" onclick="event.stopPropagation()">
+        <h3 class="modal-title">Инструкция по эксплуатации</h3>
+        <div class="instructions-content">
+            <h4>Режимы работы</h4>
+            <p><strong>Обычный режим</strong> — вставьте код в текстовое поле (или перетащите файл), выберите шаблон и нажмите "Сгенерировать". Можно добавить контекстный код (DTO, зависимости) в нижнее поле — модель учтёт его при генерации, но документировать будет только главный код.</p>
+            <p><strong>Проектный режим</strong> — загрузите папку с проектом через кнопку "Загрузить папку с проектом". Отметьте файлы чекбоксами, затем кликайте по номерам строк в предпросмотре чтобы выделить фрагмент (первый клик — начало, второй — конец). Отметьте один фрагмент как <strong>главный</strong> (документируемый код) — он подсветится красным. Остальные фрагменты будут контекстом (синяя подсветка). После выбора нажмите "Сгенерировать".</p>
+
+            <h4>Шаблоны документа</h4>
+            <p><strong>211</strong> — документ со структурой: входные данные → выходные данные → ошибки. Требует заполнения дополнительных параметров (алгоритм, описание, ссылка, полномочия, SLA p95/p99).</p>
+            <p><strong>230</strong> — общие сведения + алгоритм работы. Подходит для описания процессов и бизнес-логики без строгой структуры входов/выходов.</p>
+
+            <h4>Предпросмотр промта</h4>
+            <p>Перед генерацией можно нажать "Предпросмотр промта" — откроется окно с финальным промтом, который будет отправлен модели. Проверьте, что вся нужная информация попала в промт, и нажмите "Сгенерировать".</p>
+
+            <h4>Результат генерации</h4>
+            <p>После генерации отображается результат. Доступны действия:</p>
+            <ul>
+                <li><strong>Код / Просмотр</strong> — переключение между сырым XHTML и визуализированным предпросмотром.</li>
+                <li><strong>Копировать</strong> — скопировать XHTML в буфер обмена.</li>
+                <li><strong>Скачать</strong> — выберите формат: HTML, MD (Markdown), PDF, DOCX.</li>
+                <li><strong>Версии</strong> — каждая генерация и исправление создают новую версию. Можно переключаться между ними (v1, v2, ...).</li>
+                <li><strong>Исправить</strong> — напишите что изменить (например "убери раздел про исключения") и модель доработает документ, создав новую версию.</li>
+            </ul>
+
+            <h4>Управление чатами</h4>
+            <ul>
+                <li><strong>Новый чат</strong> — кнопка "+" в боковой панели. Выберите режим (обычный или проектный).</li>
+                <li><strong>Переключение</strong> — клик по чату в списке слева.</li>
+                <li><strong>Переименовать</strong> — двойной клик по названию чата или кнопка с карандашом. После первой генерации чат переименовывается автоматически (по первой строке кода или имени файла).</li>
+                <li><strong>Закрепить</strong> — кнопка с булавкой слева от названия. Закреплённые чаты отображаются в верхней части списка.</li>
+                <li><strong>Удалить</strong> — кнопка с крестиком.</li>
+            </ul>
+
+            <h4>Горячие клавиши</h4>
+            <ul>
+                <li><strong>Enter</strong> (в поле имени чата) — сохранить новое имя.</li>
+                <li><strong>Escape</strong> (в поле имени чата) — отменить переименование.</li>
+            </ul>
+        </div>
+        <button id="instructionsCloseBtn" class="modal-close-btn" style="margin-top:1rem">Понятно</button>
+    </div>
+</div>
+
+<div id="settingsModal" class="modal-overlay hidden">
+    <div class="modal" onclick="event.stopPropagation()">
+        <h3 class="modal-title" id="settingsModalTitle">Настройки</h3>
+        <div class="settings-content">
+            <label class="settings-label" id="settingsLangLabel">Язык</label>
+            <div class="settings-options">
+                <button class="settings-option" id="settingsLangRu" onclick="setAppLanguage('ru')">🇷🇺 Русский</button>
+                <button class="settings-option" id="settingsLangEn" onclick="setAppLanguage('en')">🇬🇧 English</button>
+            </div>
+        </div>
+        <button class="modal-close-btn" id="settingsCloseBtn" style="margin-top:1rem">Закрыть</button>
     </div>
 </div>
 
