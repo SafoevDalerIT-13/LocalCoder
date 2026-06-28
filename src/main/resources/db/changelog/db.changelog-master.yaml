@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changeset/001-create-templates-table.yaml
+  - include:
+      file: db/changelog/changeset/002-create-projects-table.yaml
+  - include:
+      file: db/changelog/changeset/003-create-project-files-table.yaml
+  - include:
+      file: db/changelog/changeset/004-create-chats-table.yaml
+  - include:
+      file: db/changelog/changeset/005-create-messages-table.yaml
+  - include:
+      file: db/changelog/changeset/006-insert-templates.yaml

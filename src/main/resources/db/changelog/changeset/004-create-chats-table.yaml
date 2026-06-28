@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-chats-table
+      author: localcoder
+      remarks: "Таблица чатов (сессий документации)"
+      changes:
+        - createTable:
+            tableName: chats
+            remarks: "Чаты — сессии работы с документацией"
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  remarks: "UUID чата"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  remarks: "Название чата"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: mode
+                  type: varchar(20)
+                  remarks: "Режим чата (simple / project)"
+                  defaultValue: "simple"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: template_code
+                  type: varchar(50)
+                  remarks: "Код шаблона документации"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: frontend_state
+                  type: text
+                  remarks: "JSON-состояние фронтенда (пин, sourceCode, projectId и т.д.)"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: project_id
+                  type: uuid
+                  remarks: "Ссылка на проект (для project-режима)"
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_chats_project
+                    references: projects(id)
+              - column:
+                  name: created_at
+                  type: timestamp
+                  remarks: "Дата создания"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  remarks: "Дата последнего обновления"
+                  constraints:
+                    nullable: true

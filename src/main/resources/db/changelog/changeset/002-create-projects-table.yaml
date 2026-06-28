@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-projects-table
+      author: localcoder
+      remarks: "Таблица проектов (загруженные папки с кодом)"
+      changes:
+        - createTable:
+            tableName: projects
+            remarks: "Проекты — загруженные или просканированные директории"
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  remarks: "UUID проекта"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  remarks: "Название проекта"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: project_path
+                  type: text
+                  remarks: "Путь к директории на диске (опционально)"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: timestamp
+                  remarks: "Дата создания"
+                  constraints:
+                    nullable: true

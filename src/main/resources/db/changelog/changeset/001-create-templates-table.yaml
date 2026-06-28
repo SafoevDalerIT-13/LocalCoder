@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-templates-table
+      author: localcoder
+      remarks: "Таблица шаблонов документации"
+      changes:
+        - createTable:
+            tableName: templates
+            remarks: "Шаблоны документации (211, 230 и т.д.)"
+            columns:
+              - column:
+                  name: code
+                  type: varchar(50)
+                  remarks: "Код шаблона (например 211, 230)"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: content
+                  type: text
+                  remarks: "Содержимое шаблона (промпт для LLM)"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: description
+                  type: varchar(255)
+                  remarks: "Описание шаблона"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: timestamp
+                  remarks: "Дата создания"
+                  constraints:
+                    nullable: true

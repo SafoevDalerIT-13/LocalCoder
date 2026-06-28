@@ -1,0 +1,49 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-project-files-table
+      author: localcoder
+      remarks: "Таблица файлов проекта"
+      changes:
+        - createTable:
+            tableName: project_files
+            remarks: "Файлы, загруженные в рамках проекта"
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  remarks: "UUID записи файла"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: project_id
+                  type: uuid
+                  remarks: "Ссылка на проект"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_project_files_project
+                    references: projects(id)
+              - column:
+                  name: relative_path
+                  type: varchar(1024)
+                  remarks: "Относительный путь к файлу внутри проекта"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: varchar(255)
+                  remarks: "Имя файла"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: content
+                  type: text
+                  remarks: "Содержимое файла"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: timestamp
+                  remarks: "Дата загрузки"
+                  constraints:
+                    nullable: true

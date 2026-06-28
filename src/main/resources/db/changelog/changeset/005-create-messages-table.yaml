@@ -1,0 +1,49 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-messages-table
+      author: localcoder
+      remarks: "Таблица сообщений чата"
+      changes:
+        - createTable:
+            tableName: messages
+            remarks: "Сообщения внутри чата (user / assistant)"
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  remarks: "UUID сообщения"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: role
+                  type: varchar(20)
+                  remarks: "Роль (user / assistant / system)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: text
+                  remarks: "Текст сообщения"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: version
+                  type: int
+                  remarks: "Номер версии документации (для assistant сообщений)"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: timestamp
+                  remarks: "Дата создания"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: chat_id
+                  type: uuid
+                  remarks: "Ссылка на чат"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_messages_chat
+                    references: chats(id)
